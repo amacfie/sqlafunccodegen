@@ -1,0 +1,5 @@
+black
+dukpy==0.3.*
+isort
+pyright
+ruff
