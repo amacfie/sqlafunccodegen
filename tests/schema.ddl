@@ -86,3 +86,7 @@ $$ language sql;
 create function set_range(r floatrange) returns void as $$
       select null;
 $$ language sql;
+
+create function do_anyrange(r anyrange) returns void as $$
+      select null;
+$$ language sql;

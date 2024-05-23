@@ -55,6 +55,7 @@ def main(
 class TypeStrings:
     python_type: str
     sqla_type: str | None
+    python_type_anyenum: str | None = None
 
 
 # types within a schema have unique names
@@ -66,23 +67,46 @@ pg_catalog_types = {
     "void": TypeStrings(python_type="None", sqla_type=None),
     "json": TypeStrings(python_type="JsonValue", sqla_type="postgresql.JSON"),
     "jsonb": TypeStrings(python_type="JsonValue", sqla_type="postgresql.JSONB"),
+    "anyarray": TypeStrings(
+        python_type="AnyArray[_T]",
+        sqla_type="None",
+        python_type_anyenum="AnyArray[_E]",
+    ),
+    "anyelement": TypeStrings(
+        python_type="_T", sqla_type="None", python_type_anyenum="_E"
+    ),
+    "anyenum": TypeStrings(
+        python_type="_E", sqla_type="None", python_type_anyenum="_E"
+    ),
+    "anycompatible": TypeStrings(
+        python_type="_T", sqla_type="None", python_type_anyenum="_E"
+    ),
+    "anycompatiblearray": TypeStrings(
+        python_type="AnyArray[_T]",
+        sqla_type="None",
+        python_type_anyenum="AnyArray[_E]",
+    ),
 }
 
-FRONTMATTER = """from typing import Iterable, Literal, Union
+FRONTMATTER = """from enum import Enum
+from typing import Any, Iterable, Literal, TypeVar, Union
 from uuid import UUID
 
 import sqlalchemy
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.type_api import TypeEngine
 
 
 JsonValue = None | bool | float | int | str | list['JsonValue'] | dict[str, 'JsonValue']
+_T = TypeVar('_T')
+_E = TypeVar('_E', bound=Enum)
+AnyArray = list[_T] | list['AnyArray'] | None
 """
 
 
 class PythonGenerator:
     out_recursive_type_defs: set[str] = set()
+    out_enums: set[str] = set()
 
     def __init__(self, dest: str, schema: str):
         self.schema = schema
@@ -99,23 +123,34 @@ class PythonGenerator:
             if obj["kind"] == "type"
         }
 
-    def graphile_type_to_python(self, graphile_type: dict) -> str:
+    def graphile_type_to_python(
+        self, graphile_type: dict, anyenum: bool
+    ) -> str:
         if graphile_type["namespaceName"] == "pg_catalog":
             if graphile_type["name"] in pg_catalog_types:
+                if (
+                    anyenum
+                    and pg_catalog_types[
+                        graphile_type["name"]
+                    ].python_type_anyenum
+                ):
+                    pct = pg_catalog_types[
+                        graphile_type["name"]
+                    ].python_type_anyenum
+                else:
+                    pct = pg_catalog_types[graphile_type["name"]].python_type
+
                 # we have to avoid `None | None` because it's an error
-                return (
-                    "Union["
-                    + pg_catalog_types[graphile_type["name"]].python_type
-                    + ", None]"
-                )
+                return f"Union[{pct}, None]"
             elif graphile_type["isPgArray"]:
                 item_graphile_type = self.graphile_type_by_id[
                     graphile_type["arrayItemTypeId"]
                 ]
                 item_python_type = self.graphile_type_to_python(
-                    item_graphile_type
+                    item_graphile_type,
+                    anyenum=anyenum,
                 )
-                ret = f"Array{graphile_type['id']}"
+                ret = f"Array__{item_graphile_type['name']}"
                 rtd = (
                     f"{ret} = list['{item_python_type}'] | list['{ret}'] | None"
                 )
@@ -123,13 +158,13 @@ class PythonGenerator:
                 return ret
         elif graphile_type["namespaceName"] == self.schema:
             if graphile_type["enumVariants"]:
-                return (
-                    "Literal["
-                    + ", ".join(
-                        repr(ev) for ev in graphile_type["enumVariants"]
-                    )
-                    + "] | None"
+                enum_name = f"Enum__{graphile_type['name']}"
+                e = f"class {enum_name}(str, Enum):\n"
+                e += "\n".join(
+                    f"    {ev} = '{ev}'" for ev in graphile_type["enumVariants"]
                 )
+                self.out_enums.add(e)
+                return f"{enum_name} | None"
         return "Any"
 
     def graphile_type_to_sqla(self, graphile_type: dict) -> str:
@@ -151,7 +186,7 @@ class PythonGenerator:
                 return (
                     "postgresql.ENUM(name=" f"{repr(graphile_type['name'])}" ")"
                 )
-        return "TypeEngine"
+        return "None"
 
     def generate(self):
         procedures = [
@@ -175,6 +210,7 @@ class PythonGenerator:
 
         ret = FRONTMATTER
         ret += "\n".join(self.out_recursive_type_defs) + "\n\n"
+        ret += "\n".join(self.out_enums) + "\n\n"
         ret += out_procedures
 
         return ret
@@ -189,19 +225,27 @@ class PythonGenerator:
         if any(am != "i" for am in procedure["argModes"]):
             return None
 
-        scalar_return_type = self.graphile_type_to_python(return_type)
-        if procedure["returnsSet"]:
-            python_return_type = f"Iterable[{scalar_return_type}]"
-        else:
-            python_return_type = scalar_return_type
-
         arg_types = [
             self.graphile_type_by_id[arg_id]
             for arg_id in procedure["argTypeIds"]
         ]
 
+        anyenum = "anyenum" in (
+            {at["name"] for at in arg_types} | {return_type["name"]}
+        )
+
+        scalar_return_type = self.graphile_type_to_python(
+            return_type, anyenum=anyenum
+        )
+        if procedure["returnsSet"]:
+            python_return_type = f"Iterable[{scalar_return_type}]"
+        else:
+            python_return_type = scalar_return_type
+
         out_params = ", ".join(
-            arg_name + ": " + self.graphile_type_to_python(arg_type)
+            arg_name
+            + ": "
+            + self.graphile_type_to_python(arg_type, anyenum=anyenum)
             for arg_type, arg_name in zip(arg_types, procedure["argNames"])
         )
 
@@ -221,8 +265,7 @@ class PythonGenerator:
         if procedure["description"] is None:
             out_docstring = ""
         else:
-            escaped = procedure["description"].replace('"""', r'\"""')
-            out_docstring = '"""' + escaped + '"""'
+            out_docstring = repr(procedure["description"])
 
         # an alternative would be using NewType to differentiate between
         # ambiguous Python types, e.g. Money = NewType("Money", str)

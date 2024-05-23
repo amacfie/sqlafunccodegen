@@ -5,6 +5,7 @@ import sys
 import tempfile
 from typing import Any
 
+from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from sqlafunccodegen.main import main
@@ -15,6 +16,7 @@ out: Any = None
 engine = create_async_engine(
     "postgresql+asyncpg://" + "postgres:postgres@localhost:5432/postgres",
     echo=True,
+    poolclass=NullPool,
 )
 
 
