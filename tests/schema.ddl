@@ -78,3 +78,11 @@ BEGIN
     RETURN 'happy';
 END;
 $$ LANGUAGE plpgsql;
+
+create function get_range() returns int4range as $$
+      select int4range(1, 10);
+$$ language sql;
+
+create function set_range(r floatrange) returns void as $$
+      select null;
+$$ language sql;

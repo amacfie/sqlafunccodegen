@@ -59,8 +59,8 @@ class TypeStrings:
 
 # types within a schema have unique names
 pg_catalog_types = {
-    "int4": TypeStrings(python_type="int", sqla_type="sqlalchemy.Integer"),
-    "text": TypeStrings(python_type="str", sqla_type="sqlalchemy.Text"),
+    "int4": TypeStrings(python_type="int", sqla_type="postgres.INTEGER"),
+    "text": TypeStrings(python_type="str", sqla_type="postgres.TEXT"),
     "uuid": TypeStrings(python_type="UUID", sqla_type="sqlalchemy.UUID"),
     "bool": TypeStrings(python_type="bool", sqla_type="sqlalchemy.Boolean"),
     "void": TypeStrings(python_type="None", sqla_type=None),
@@ -130,7 +130,7 @@ class PythonGenerator:
                     )
                     + "] | None"
                 )
-        return "str"
+        return "Any"
 
     def graphile_type_to_sqla(self, graphile_type: dict) -> str:
         if graphile_type["namespaceName"] == "pg_catalog":
@@ -154,11 +154,20 @@ class PythonGenerator:
         return "TypeEngine"
 
     def generate(self):
+        procedures = [
+            gd for gd in self.graphile_data if gd["kind"] == "procedure"
+        ]
+        procedure_names = [procedure["name"] for procedure in procedures]
+        overloads = {
+            procedure["name"]
+            for procedure in procedures
+            if procedure_names.count(procedure["name"]) > 1
+        }
         generated_procedures = [
-            self.generate_procedure(procedure)
-            for procedure in [
-                gd for gd in self.graphile_data if gd["kind"] == "procedure"
-            ]
+            self.generate_procedure(
+                procedure, overload=procedure["name"] in overloads
+            )
+            for procedure in procedures
         ]
         out_procedures = "\n\n".join(
             gp for gp in generated_procedures if gp is not None
@@ -170,7 +179,7 @@ class PythonGenerator:
 
         return ret
 
-    def generate_procedure(self, procedure: dict) -> str | None:
+    def generate_procedure(self, procedure: dict, overload: bool) -> str | None:
         print(procedure)
         return_type = self.graphile_type_by_id[procedure["returnTypeId"]]
         print(return_type, "\n")
@@ -215,7 +224,19 @@ class PythonGenerator:
             escaped = procedure["description"].replace('"""', r'\"""')
             out_docstring = '"""' + escaped + '"""'
 
-        return f"""async def {procedure["name"]}(
+        # an alternative would be using NewType to differentiate between
+        # ambiguous Python types, e.g. Money = NewType("Money", str)
+        # and then use @typing.overload
+        if overload:
+            out_name = (
+                procedure["name"]
+                + "__"
+                + "__".join(at["name"] for at in arg_types)
+            )
+        else:
+            out_name = procedure["name"]
+
+        return f"""async def {out_name}(
     db_sesh: AsyncSession, {out_params}
 ) -> {python_return_type}:
     {out_docstring}
