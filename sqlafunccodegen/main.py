@@ -101,6 +101,7 @@ pg_catalog_types = {
         sqla_type="postgresql.CIDR",
     ),
     "macaddr": TypeStrings(python_type="str", sqla_type="postgresql.MACADDR"),
+    "circle": TypeStrings(python_type="asyncpg.Circle", sqla_type="None"),
     "date": TypeStrings(
         python_type="datetime.date", sqla_type="postgresql.DATE"
     ),
@@ -122,6 +123,11 @@ pg_catalog_types = {
         python_type="datetime.timedelta",
         sqla_type="postgresql.INTERVAL",
     ),
+    "line": TypeStrings(python_type="asyncpg.Line", sqla_type="None"),
+    "lseg": TypeStrings(python_type="asyncpg.LineSegment", sqla_type="None"),
+    "path": TypeStrings(python_type="asyncpg.Path", sqla_type="None"),
+    "point": TypeStrings(python_type="asyncpg.Point", sqla_type="None"),
+    "polygon": TypeStrings(python_type="asyncpg.Polygon", sqla_type="None"),
     "float": TypeStrings(python_type="float", sqla_type="postgresql.FLOAT"),
     "bigint": TypeStrings(python_type="int", sqla_type="postgresql.BIGINT"),
     "numeric": TypeStrings(
