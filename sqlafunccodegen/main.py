@@ -62,6 +62,8 @@ class TypeStrings:
 pg_catalog_types = {
     "int4": TypeStrings(python_type="int", sqla_type="postgres.INTEGER"),
     "text": TypeStrings(python_type="str", sqla_type="postgres.TEXT"),
+    "varchar": TypeStrings(python_type="str", sqla_type="postgres.VARCHAR"),
+    "char": TypeStrings(python_type="str", sqla_type="postgres.CHAR"),
     "uuid": TypeStrings(python_type="UUID", sqla_type="sqlalchemy.UUID"),
     "bool": TypeStrings(python_type="bool", sqla_type="sqlalchemy.Boolean"),
     "void": TypeStrings(python_type="None", sqla_type=None),
@@ -86,12 +88,60 @@ pg_catalog_types = {
         sqla_type="None",
         python_type_anyenum="AnyArray[_E]",
     ),
+    "bit": TypeStrings(
+        python_type="asyncpg.BitString", sqla_type="postgresql.BIT"
+    ),
+    "box": TypeStrings(python_type="asyncpg.Box", sqla_type="None"),
+    "bytea": TypeStrings(python_type="bytes", sqla_type="postgresql.BYTEA"),
+    "cidr": TypeStrings(
+        python_type="IPv4Network | IPv6Network", sqla_type="postgresql.CIDR"
+    ),
+    "inet": TypeStrings(
+        python_type="IPv4Interface | IPv6Interface | IPv4Address | IPv6Address",
+        sqla_type="postgresql.CIDR",
+    ),
+    "macaddr": TypeStrings(python_type="str", sqla_type="postgresql.MACADDR"),
+    "date": TypeStrings(
+        python_type="datetime.date", sqla_type="postgresql.DATE"
+    ),
+    "time": TypeStrings(
+        python_type="datetime.time", sqla_type="postgresql.TIME(timezone=False)"
+    ),
+    "timetz": TypeStrings(
+        python_type="datetime.time", sqla_type="postgresql.TIME(timezone=True)"
+    ),
+    "timestamp": TypeStrings(
+        python_type="datetime.datetime",
+        sqla_type="postgresql.TIMESTAMP(timezone=False)",
+    ),
+    "timestamptz": TypeStrings(
+        python_type="datetime.datetime",
+        sqla_type="postgresql.TIMESTAMP(timezone=True)",
+    ),
+    "interval": TypeStrings(
+        python_type="datetime.timedelta",
+        sqla_type="postgresql.INTERVAL",
+    ),
+    "float": TypeStrings(python_type="float", sqla_type="postgresql.FLOAT"),
+    "bigint": TypeStrings(python_type="int", sqla_type="postgresql.BIGINT"),
+    "numeric": TypeStrings(
+        python_type="Decimal", sqla_type="postgresql.NUMERIC"
+    ),
+    "money": TypeStrings(python_type="str", sqla_type="postgresql.MONEY"),
 }
 
-FRONTMATTER = """from enum import Enum
+FRONTMATTER = """import datetime
+from decimal import Decimal
+from enum import Enum
+from ipaddress import (
+    IPv4Address, IPv6Address,
+    IPv4Interface, IPv6Interface,
+    IPv4Network, IPv6Network,
+)
 from typing import Any, Iterable, Literal, TypeVar, Union
 from uuid import UUID
 
+import asyncpg
 import sqlalchemy
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
