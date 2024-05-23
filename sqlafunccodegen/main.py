@@ -60,7 +60,7 @@ def main(
                 " SQLAlchemy SQL expression."
             )
         ),
-    ] = "python",
+    ] = Mode.python,
 ):
     dest = dest.removeprefix("postgres://").removeprefix("postgresql://")
     python_generator = PythonGenerator(dest=dest, schema=schema)
