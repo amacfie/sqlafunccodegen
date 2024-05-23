@@ -1,7 +1,8 @@
 import asyncio
 import dataclasses
 import pathlib
-from typing import Sequence
+from enum import Enum
+from typing import Annotated, Sequence
 
 import dukpy
 import typer
@@ -40,15 +41,31 @@ async def get_graphile_data(engine: AsyncEngine, schema: str) -> Sequence[dict]:
         )
 
 
+class Mode(str, Enum):
+    python = "python"
+    sqlalchemy = "sqlalchemy"
+
+
 def main(
     outfile: pathlib.Path,
     dest: str = "postgres:postgres@localhost:5432/postgres",
     schema: str = "public",
+    mode: Annotated[
+        Mode,
+        typer.Option(
+            help=(
+                "'python' mode generates functions that take and return Python"
+                " values, while 'sqlalchemy' mode generates functions that act"
+                " as sqlalchemy.func functions and can be used within a"
+                " SQLAlchemy SQL expression."
+            )
+        ),
+    ] = "python",
 ):
     dest = dest.removeprefix("postgres://").removeprefix("postgresql://")
     python_generator = PythonGenerator(dest=dest, schema=schema)
 
-    outfile.write_text(python_generator.generate())
+    outfile.write_text(python_generator.generate(mode))
 
 
 @dataclasses.dataclass
@@ -244,7 +261,7 @@ class PythonGenerator:
                 )
         return "None"
 
-    def generate(self):
+    def generate(self, mode: Mode) -> str:
         procedures = [
             gd for gd in self.graphile_data if gd["kind"] == "procedure"
         ]
@@ -256,7 +273,7 @@ class PythonGenerator:
         }
         generated_procedures = [
             self.generate_procedure(
-                procedure, overload=procedure["name"] in overloads
+                procedure, overload=procedure["name"] in overloads, mode=mode
             )
             for procedure in procedures
         ]
@@ -271,10 +288,15 @@ class PythonGenerator:
 
         return ret
 
-    def generate_procedure(self, procedure: dict, overload: bool) -> str | None:
+    def generate_procedure(
+        self,
+        procedure: dict,
+        overload: bool,
+        mode: Mode,
+    ) -> str | None:
         print(procedure)
         return_type = self.graphile_type_by_id[procedure["returnTypeId"]]
-        print(return_type, "\n")
+        print(return_type, "\n")  # JFT
 
         # if any arg mode is not IN, we don't handle it
         # variadic params aren't supported in Graphile
@@ -298,20 +320,26 @@ class PythonGenerator:
         else:
             python_return_type = scalar_return_type
 
-        out_params = ", ".join(
-            arg_name
-            + ": "
-            + self.graphile_type_to_python(arg_type, anyenum=anyenum)
-            for arg_type, arg_name in zip(arg_types, procedure["argNames"])
-        )
+        params_list = []
+        for arg_type, arg_name in zip(arg_types, procedure["argNames"]):
+            s = f"{arg_name}: "
+            if mode == "python":
+                s += self.graphile_type_to_python(arg_type, anyenum=anyenum)
+            else:
+                s += "Any"
+            params_list.append(s)
+        out_params = ", ".join(params_list)
 
-        # e.g. if a function takes a JSONB, we can't just pass a python string
-        # because that becomes `TEXT` in pg which is a type error
-        out_args = ", ".join(
-            f"sqlalchemy.bindparam(key=None, value={arg_name},"
-            f" type_={self.graphile_type_to_sqla(arg_type)})"
-            for arg_type, arg_name in zip(arg_types, procedure["argNames"])
-        )
+        if mode == "python":
+            # e.g. if a function takes a JSONB, we can't just pass a python
+            # string because that becomes `TEXT` in pg which is a type error
+            out_args = ", ".join(
+                f"sqlalchemy.bindparam(key=None, value={arg_name},"
+                f" type_={self.graphile_type_to_sqla(arg_type)})"
+                for arg_type, arg_name in zip(arg_types, procedure["argNames"])
+            )
+        else:
+            out_args = ", ".join(arg_name for arg_name in procedure["argNames"])
 
         if procedure["returnsSet"]:
             out_method = "scalars"
@@ -335,7 +363,8 @@ class PythonGenerator:
         else:
             out_name = procedure["name"]
 
-        return f"""async def {out_name}(
+        if mode == "python":
+            return f"""async def {out_name}(
     db_sesh: AsyncSession, {out_params}
 ) -> {python_return_type}:
     {out_docstring}
@@ -344,6 +373,12 @@ class PythonGenerator:
             getattr(sqlalchemy.func, '{procedure["name"]}')({out_args})
         )
     )).{out_method}()"""
+        else:
+            return f"""def {out_name}(
+    {out_params}
+) -> Any:
+    {out_docstring}
+    return getattr(sqlalchemy.func, '{procedure["name"]}')({out_args})"""
 
 
 def cli():

@@ -8,6 +8,8 @@ but for functions instead of tables.
 Benefit over PostgREST: You can call functions and execute other SQL within
 a transaction.
 
+Status: experimental
+
 Usage:
 ```bash
 sqlafunccodegen --help
