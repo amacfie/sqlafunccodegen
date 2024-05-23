@@ -176,6 +176,7 @@ class PythonGenerator:
         print(return_type, "\n")
 
         # if any arg mode is not IN, we don't handle it
+        # variadic params aren't supported in Graphile
         if any(am != "i" for am in procedure["argModes"]):
             return None
 

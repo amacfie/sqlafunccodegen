@@ -5,6 +5,9 @@ SQLAlchemy.
 Like [sqlacodegen](https://github.com/agronholm/sqlacodegen)
 but for functions instead of tables.
 
+Benefit over PostgREST: You can call functions and execute other SQL within
+a transaction.
+
 Usage:
 ```bash
 sqlafunccodegen --help

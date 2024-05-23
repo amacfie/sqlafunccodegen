@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from sqlafunccodegen.main import main
 
+
 out: Any = None
 
 engine = create_async_engine(
