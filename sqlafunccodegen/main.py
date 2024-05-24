@@ -89,8 +89,12 @@ pg_catalog_types = {
     "uuid": TypeStrings(python_type="UUID", sqla_type="sqlalchemy.UUID"),
     "bool": TypeStrings(python_type="bool", sqla_type="sqlalchemy.Boolean"),
     "void": TypeStrings(python_type="None"),
-    "json": TypeStrings(python_type="JsonValue", sqla_type="postgresql.JSON"),
-    "jsonb": TypeStrings(python_type="JsonValue", sqla_type="postgresql.JSONB"),
+    "json": TypeStrings(
+        python_type="pydantic.JsonValue", sqla_type="postgresql.JSON"
+    ),
+    "jsonb": TypeStrings(
+        python_type="pydantic.JsonValue", sqla_type="postgresql.JSONB"
+    ),
     "anyarray": TypeStrings(
         python_type="AnyArray[_T]",
         sqla_type="None",
@@ -175,6 +179,7 @@ from ipaddress import (
     IPv4Network, IPv6Network,
 )
 from typing import Annotated, Any, Iterable, Literal, TypeVar, Union
+from typing_extensions import TypeAliasType
 from uuid import UUID
 
 import asyncpg
@@ -184,7 +189,6 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-JsonValue = None | bool | float | int | str | list['JsonValue'] | dict[str, 'JsonValue']
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray'] | None
@@ -254,8 +258,11 @@ class PythonGenerator:
                     item_graphile_type["id"],
                     anyenum=anyenum,
                 )
+                # https://github.com/pydantic/pydantic/issues/8346
                 rtd = (
-                    f"{ret} = list['{item_python_type}'] | list['{ret}'] | None"
+                    f"{ret} = TypeAliasType('{ret}', "
+                    f"'list[{item_python_type}] | list[{ret}] | None'"
+                    ")"
                 )
                 self.out_recursive_type_defs.add(rtd)
                 return ret

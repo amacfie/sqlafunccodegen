@@ -45,6 +45,15 @@ async def run_get_mood():
         print(await out.get_mood(session, "happy"))
 
 
+async def run_complex_id():
+    async with (
+        AsyncSession(engine, expire_on_commit=False) as session,
+        session.begin(),
+    ):
+        v = out.Model__complex(r=1.0, i=2.0)
+        print(await out.complex_id(session, v))
+
+
 if __name__ == "__main__":
     with tempfile.NamedTemporaryFile(suffix=".py") as f:
         p = pathlib.Path(f.name)
@@ -67,4 +76,4 @@ if __name__ == "__main__":
         spec.loader.exec_module(out)
         # the output is now loaded as a module named `out`
 
-    asyncio.run(run_get_mood())
+    asyncio.run(run_complex_id())
