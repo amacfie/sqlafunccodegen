@@ -128,7 +128,7 @@ async def get_mood(
             getattr(sqlalchemy.func, 'get_mood')(sqlalchemy.literal(_mood, type_=postgresql.ENUM(name='mood')))
         )
     )).scalar_one_or_none()
-    return r
+    return Enum__mood(r) if r is not None else None
 
 async def get_range(
     db_sesh: AsyncSession, 

@@ -1,4 +1,5 @@
 import asyncio
+import re
 from collections import Counter, defaultdict
 from enum import Enum
 from functools import lru_cache
@@ -452,6 +453,19 @@ class PythonGenerator:
                 out_python_return_stmt = (
                     f"return pydantic.TypeAdapter({scalar_return_type})"
                     f".validate_python(None if r is None else dict(r.items()))"
+                )
+        elif scalar_return_type.startswith("Enum__"):
+            enum_type = re.split(r"\W+", scalar_return_type)[0]
+            if procedure["returnsSet"]:
+                out_python_return_stmt = (
+                    "return ("
+                    f"{enum_type}(i) if i is not None else None"
+                    " for i in r"
+                    ")"
+                )
+            else:
+                out_python_return_stmt = (
+                    f"return {enum_type}(r) if r is not None else None"
                 )
         else:
             out_python_return_stmt = "return r"

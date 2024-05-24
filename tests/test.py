@@ -1,7 +1,7 @@
 import unittest
 from contextlib import asynccontextmanager
 
-from sqlalchemy import NullPool, select
+from sqlalchemy import NullPool, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from . import out_python, out_sqlalchemy
@@ -44,7 +44,9 @@ class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
         async with get_db_sesh() as db_sesh:
             result = (
                 await db_sesh.execute(
-                    select(out_sqlalchemy.complex_id({"r": 1.0, "i": 2.0}))
+                    select(
+                        out_sqlalchemy.complex_id(literal({"r": 1.0, "i": 2.0}))
+                    )
                 )
             ).scalar_one_or_none()
         assert result is not None
