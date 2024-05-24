@@ -1,9 +1,8 @@
 import unittest
 from contextlib import asynccontextmanager
 
-from sqlalchemy import NullPool
+from sqlalchemy import NullPool, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-
 
 from . import out_python, out_sqlalchemy
 
@@ -29,11 +28,21 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
         v = out_python.Model__complex(r=1.0, i=2.0)
         async with get_db_sesh() as db_sesh:
             result = await out_python.complex_id(db_sesh, v)
+        assert result is not None
         self.assertEqual(result.r, 1.0)
         self.assertEqual(result.i, 2.0)
 
 
-class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase): ...
+class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
+    async def test_complex_id(self):
+        async with get_db_sesh() as db_sesh:
+            result = (
+                await db_sesh.execute(
+                    select(out_sqlalchemy.complex_id({"r": 1.0, "i": 2.0}))
+                )
+            ).scalar_one_or_none()
+        self.assertEqual(result["r"], 1.0)
+        self.assertEqual(result["i"], 2.0)
 
 
 async def run_nullables():
