@@ -35,6 +35,7 @@ jobs:
           pip install --upgrade pip setuptools wheel
           pip install -e .
           pip install -r requirements_dev.txt
+          pip install -r requirements_generated.txt
       - name: Run type checking
         run: pyright
   isort:
@@ -77,6 +78,5 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel
           pip install -e .
-          pip install -r requirements_generated.txt
       - name: Compare outputs to expected outputs
         run: ./tests/generate.sh
