@@ -1,24 +1,39 @@
-import asyncio
-import importlib.util
-import io
-import pathlib
-import sys
-import tempfile
-from typing import Any
+import unittest
+from contextlib import asynccontextmanager
 
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from sqlafunccodegen.main import main
 
+from . import out_python, out_sqlalchemy
 
-out: Any = None
 
 engine = create_async_engine(
-    "postgresql+asyncpg://" + "postgres:postgres@localhost:5432/postgres",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres",
     echo=True,
     poolclass=NullPool,
 )
+
+
+@asynccontextmanager
+async def get_db_sesh():
+    async with (
+        AsyncSession(engine, expire_on_commit=False) as session,
+        session.begin(),
+    ):
+        yield session
+
+
+class TestPython(unittest.IsolatedAsyncioTestCase):
+    async def test_complex_id(self):
+        v = out_python.Model__complex(r=1.0, i=2.0)
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.complex_id(db_sesh, v)
+        self.assertEqual(result.r, 1.0)
+        self.assertEqual(result.i, 2.0)
+
+
+class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase): ...
 
 
 async def run_nullables():
@@ -52,28 +67,3 @@ async def run_complex_id():
     ):
         v = out.Model__complex(r=1.0, i=2.0)
         print(repr(await out.complex_id(session, v)))
-
-
-if __name__ == "__main__":
-    with tempfile.NamedTemporaryFile(suffix=".py") as f:
-        p = pathlib.Path(f.name)
-        captured_output = io.StringIO()
-        original_stdout = sys.stdout
-        try:
-            sys.stdout = captured_output
-            main()
-            output = captured_output.getvalue()
-        finally:
-            sys.stdout = original_stdout
-
-        p.write_text(output)
-
-        spec = importlib.util.spec_from_file_location("out", str(p))
-        assert spec is not None
-        out: Any = importlib.util.module_from_spec(spec)
-        sys.modules["out"] = out
-        assert spec.loader is not None
-        spec.loader.exec_module(out)
-        # the output is now loaded as a module named `out`
-
-    asyncio.run(run_complex_id())

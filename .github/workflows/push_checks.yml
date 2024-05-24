@@ -80,3 +80,17 @@ jobs:
           pip install -e .
       - name: Compare outputs to expected outputs
         run: ./tests/generate.sh
+  run_tests_on_generated_code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements_generated.txt
+      - name: Run tests
+        run: ./tests/run_tests.sh
