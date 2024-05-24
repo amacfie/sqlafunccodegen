@@ -38,8 +38,6 @@ class Model__league(pydantic.BaseModel):
     name: 'Union[str, None]'
     nullable: 'Union[str, None]'
     list: 'Array__text'
-
-
 async def can_return_null(
     db_sesh: AsyncSession, 
 ) -> Union[str, None]:

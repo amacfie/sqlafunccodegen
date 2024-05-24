@@ -332,29 +332,29 @@ class PythonGenerator:
             for procedure in procedures
         ]
         out_procedures = "\n\n".join(
-            gp for gp in generated_procedures if gp is not None
+            sorted(gp for gp in generated_procedures if gp is not None)
         )
 
-        out_models = self.generate_models()
+        out_models = "\n\n".join(sorted(self.generate_models()))
 
         ret = FRONTMATTER
-        ret += "\n".join(self.out_recursive_type_defs) + "\n\n"
-        ret += "\n".join(self.out_enums) + "\n\n"
+        ret += "\n".join(sorted(self.out_recursive_type_defs)) + "\n\n"
+        ret += "\n".join(sorted(self.out_enums)) + "\n\n"
         ret += out_models
         ret += out_procedures
 
         return ret
 
-    def generate_models(self) -> str:
+    def generate_models(self) -> list[str]:
         completed_class_ids = set()
-        out = ""
+        ret = []
         # items can get added to the set while we're iterating
         while self.class_ids_to_generate:
             class_id = self.class_ids_to_generate.pop()
             if class_id in completed_class_ids:
                 continue
             class_ = self.graphile_class_by_id[class_id]
-            out += "class Model__" + class_["name"] + "(pydantic.BaseModel):\n"
+            out = "class Model__" + class_["name"] + "(pydantic.BaseModel):\n"
             graphile_type = self.graphile_type_by_id[class_["typeId"]]
             if graphile_type["description"]:
                 out += f"    {repr(graphile_type['description'])}\n"
@@ -380,9 +380,9 @@ class PythonGenerator:
                     attr_type = basic_attr_type
                 out += f"    {attr['name']}: {attr_type}\n"
 
-            out += "\n\n"
+            ret.append(out)
             completed_class_ids.add(class_id)
-        return out
+        return ret
 
     def generate_procedure(self, procedure: dict, mode: Mode) -> str | None:
         # if any arg mode is not IN, we don't handle it
