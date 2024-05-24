@@ -51,7 +51,7 @@ async def run_complex_id():
         session.begin(),
     ):
         v = out.Model__complex(r=1.0, i=2.0)
-        print(await out.complex_id(session, v))
+        print(repr(await out.complex_id(session, v)))
 
 
 if __name__ == "__main__":

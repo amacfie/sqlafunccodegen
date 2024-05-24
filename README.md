@@ -30,11 +30,15 @@ Capabilities:
     form in which sqlafunccodegen attempts to send them to the database may not
     work.
 * both modes:
-  * requires `asyncpg`
+  * uses asyncpg
   * comments as docstrings
   * functions with overloads not supported
   * `IN`, `INOUT`, and `VARIADIC` params not supported
 
+Generated code dependencies:
+* asyncpg
+* Pydantic 2
+* SQLAlchemy 2
 
 ## Example
 
