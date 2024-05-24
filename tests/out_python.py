@@ -6,7 +6,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, Literal, TypeVar, Union
+from typing import Annotated, Any, Iterable, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 
@@ -79,7 +79,7 @@ async def count_leagues_by_nullable(
     'Count leagues by nullable'
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'count_leagues_by_nullable')(sqlalchemy.literal(_nullable, type_=postgres.TEXT))
+            getattr(sqlalchemy.func, 'count_leagues_by_nullable')(sqlalchemy.literal(_nullable, type_=postgresql.TEXT))
         )
     )).scalar_one_or_none()
     return r
@@ -101,7 +101,7 @@ async def get_lists(
     
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'get_lists')(sqlalchemy.literal(_list, type_=postgresql.ARRAY(postgres.TEXT)))
+            getattr(sqlalchemy.func, 'get_lists')(sqlalchemy.literal(_list, type_=postgresql.ARRAY(postgresql.TEXT)))
         )
     )).scalars()
     return r

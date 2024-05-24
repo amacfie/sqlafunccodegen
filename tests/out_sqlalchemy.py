@@ -6,7 +6,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, Literal, TypeVar, Union
+from typing import Annotated, Any, Iterable, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 
