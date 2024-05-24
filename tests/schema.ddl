@@ -23,8 +23,17 @@ create function count_leagues_by_nullable(_nullable text) returns integer as $$
     select count(*) from league where nullable = _nullable;
 $$ language sql;
 
+comment on function count_leagues_by_nullable(text) is 'Count leagues by nullable';
+
 create function ids() returns setof integer as $$
     select id from league;
+$$ language sql;
+
+create function overloaded(x int) returns void as $$
+    select null;
+$$ language sql;
+create function overloaded(x text) returns void as $$
+    select null;
 $$ language sql;
 
 create function nullables() returns setof text as $$
@@ -83,10 +92,24 @@ create function get_range() returns int4range as $$
       select int4range(1, 10);
 $$ language sql;
 
-create function set_range(r floatrange) returns void as $$
+create function do_anyrange(r anyrange) returns void as $$
       select null;
 $$ language sql;
 
-create function do_anyrange(r anyrange) returns void as $$
-      select null;
+CREATE TYPE complex AS (
+    r       float,
+    i       float
+);
+
+create function complex_id(z complex) returns complex as $$
+    select z;
+$$ language sql;
+
+-- domain of complex numbers on unit circle
+create domain unit_complex as complex check (
+  sqrt((VALUE).r*(VALUE).r + (VALUE).i*(VALUE).i) = 1
+);
+
+create function unitthing(z unit_complex) returns unit_complex as $$
+    select z;
 $$ language sql;

@@ -15,6 +15,27 @@ Usage:
 sqlafunccodegen --help
 ```
 
+Capabilities:
+* "sqlalchemy" mode: functions directly wrap `sqlalchemy.func.<function_name>`
+  * no types, just parameter names
+* "python" mode: functions execute a `sqlalchemy.select`
+  * many basic types
+  * enums
+  * arrays
+  * some pseudotypes such as `anyarray`
+  * Pydantic models for user-defined composite types
+  * set-returning functions return iterables
+  * the Python types may be too restrictive or not restrictive enough, the
+    correspondence isn't perfect. some types aren't recognized and the generic
+    form in which sqlafunccodegen attempts to send them to the database may not
+    work.
+* both modes:
+  * requires `asyncpg`
+  * comments as docstrings
+  * functions with overloads not supported
+  * `IN`, `INOUT`, and `VARIADIC` params not supported
+
+
 ## Example
 
 ```sql
@@ -27,9 +48,12 @@ create function count_leagues_by_description(_description text) returns integer
 as $$
     select count(*) from league where description = _description;
 $$ language sql;
+
+comment on function count_leagues_by_description is
+    'Count leagues with a given description';
 ```
 
-->
+"python" mode:
 
 ```python
 ...
@@ -37,6 +61,7 @@ $$ language sql;
 async def count_leagues_by_description(
     db_sesh: AsyncSession, _description: Union[str, None]
 ) -> Union[int, None]:
+    "Count leagues with a given description"
     return (
         await db_sesh.execute(
             sqlalchemy.select(
@@ -48,4 +73,16 @@ async def count_leagues_by_description(
             )
         )
     ).scalar_one_or_none()
+
+
+```
+
+"sqlalchemy" mode:
+
+```python
+...
+
+def count_leagues_by_description(_description: Any) -> Any:
+    "Count leagues with a given description"
+    return getattr(sqlalchemy.func, "count_leagues_by_description")(_description)
 ```

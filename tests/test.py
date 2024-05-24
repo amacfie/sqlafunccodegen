@@ -1,4 +1,5 @@
 import asyncio
+import io
 import importlib.util
 import pathlib
 import sys
@@ -47,7 +48,16 @@ async def run_get_mood():
 if __name__ == "__main__":
     with tempfile.NamedTemporaryFile(suffix=".py") as f:
         p = pathlib.Path(f.name)
-        main(p)
+        captured_output = io.StringIO()
+        original_stdout = sys.stdout
+        try:
+            sys.stdout = captured_output
+            main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = original_stdout
+
+        p.write_text(output)
 
         spec = importlib.util.spec_from_file_location("out", str(p))
         assert spec is not None
@@ -55,5 +65,6 @@ if __name__ == "__main__":
         sys.modules["out"] = out
         assert spec.loader is not None
         spec.loader.exec_module(out)
+        # the output is now loaded as a module named `out`
 
     asyncio.run(run_get_mood())
