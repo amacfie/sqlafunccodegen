@@ -89,7 +89,7 @@ class Model__league(pydantic.BaseModel):
     id: 'Union[int, None]'
     name: 'Union[str, None]'
     nullable: 'Union[str, None]'
-    list: 'Array__text'
+    stuff: 'Array__text'
     cs: 'Array__complex'
 async def all_leagues(
     db_sesh: AsyncSession, 
@@ -190,17 +190,6 @@ async def first_any(
     )).scalar_one_or_none()
     return __convert_output(Union[_T, None], r)
 
-async def get_lists(
-    db_sesh: AsyncSession, _list: ArrayIn__text
-) -> Iterable[Array__text]:
-    
-    r = (await db_sesh.execute(
-        sqlalchemy.select(
-            getattr(sqlalchemy.func, 'get_lists')(sqlalchemy.literal(__convert_input(_list), type_=postgresql.ARRAY(postgresql.TEXT)))
-        )
-    )).scalars()
-    return (__convert_output(Array__text, i) for i in r)
-
 async def get_mood(
     db_sesh: AsyncSession, _mood: Enum__mood | None
 ) -> Enum__mood | None:
@@ -222,6 +211,17 @@ async def get_range(
         )
     )).scalar_one_or_none()
     return __convert_output(Any, r)
+
+async def get_stuff(
+    db_sesh: AsyncSession, _stuff: ArrayIn__text
+) -> Iterable[Array__text]:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'get_stuff')(sqlalchemy.literal(__convert_input(_stuff), type_=postgresql.ARRAY(postgresql.TEXT)))
+        )
+    )).scalars()
+    return (__convert_output(Array__text, i) for i in r)
 
 async def getall(
     db_sesh: AsyncSession, 

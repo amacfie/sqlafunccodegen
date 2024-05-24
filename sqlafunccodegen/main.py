@@ -339,6 +339,7 @@ class PythonGenerator:
                 item_graphile_type["id"]
             )
             if item_sqla_type == "None":
+                # ARRAY(None) doesn't seem to work
                 return "None"
             else:
                 return f"postgresql.ARRAY({item_sqla_type})"

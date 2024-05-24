@@ -68,6 +68,38 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_unitthing(self):
+        z = out_python.Model__complex(r=1, i=0)
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.unitthing(db_sesh, z)
+        self.assertEqual(result, z)
+
+    async def test_all_leagues(self):
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.all_leagues(db_sesh)
+        self.assertEqual(
+            list(result),
+            [
+                out_python.Model__league(
+                    id=1,
+                    name="Premier League",
+                    nullable=None,
+                    stuff=None,
+                    cs=None,
+                ),
+                out_python.Model__league(
+                    id=2,
+                    name="Bundesliga",
+                    nullable="extra",
+                    stuff=None,
+                    cs=[
+                        out_python.Model__complex(r=10, i=20),
+                        out_python.Model__complex(r=30, i=40),
+                    ],
+                ),
+            ],
+        )
+
 
 class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
     async def test_complex_id(self):

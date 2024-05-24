@@ -91,12 +91,6 @@ def first_any(
     
     return getattr(sqlalchemy.func, 'first_any')(a, b)
 
-def get_lists(
-    _list: Any
-) -> Any:
-    
-    return getattr(sqlalchemy.func, 'get_lists')(_list)
-
 def get_mood(
     _mood: Any
 ) -> Any:
@@ -108,6 +102,12 @@ def get_range(
 ) -> Any:
     
     return getattr(sqlalchemy.func, 'get_range')()
+
+def get_stuff(
+    _stuff: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'get_stuff')(_stuff)
 
 def getall(
     

@@ -9,15 +9,24 @@ create table league (
     id serial primary key,
     name text not null,
     nullable text,
-    list text[],
+    stuff text[],
     cs complex[]
 );
 
+create domain unit_complex as complex check (
+  sqrt((VALUE).r*(VALUE).r + (VALUE).i*(VALUE).i) = 1
+);
+
+CREATE TYPE mood AS ENUM ('happy', 'sad', 'neutral');
+
+
 insert into league (name, nullable) values('Premier League', null);
-insert into league (name, nullable) values('Bundesliga', 'extra');
+insert into league (name, nullable, cs) values(
+    'Bundesliga', 'extra', array[(10, 20), (30, 40)]::complex[]);
+
 
 create function all_leagues() returns setof league as $$
-    select * from league;
+    select * from league order by id;
 $$ language sql;
 
 create function set_of_complex_arrays() returns setof complex[] as $$
@@ -64,8 +73,8 @@ create function getall() returns setof league as $$
     select * from league;
 $$ language sql;
 
-create function get_lists(_list text[]) returns setof text[] as $$
-    select list from league where list && _list;
+create function get_stuff(_stuff text[]) returns setof text[] as $$
+    select stuff from league where stuff && _stuff;
 $$ language sql;
 
 create function retvoid() returns void as $$
@@ -99,9 +108,6 @@ begin
    select x,y into y,x;
 end; $$;
 
-
-CREATE TYPE mood AS ENUM ('happy', 'sad', 'neutral');
-
 CREATE OR REPLACE FUNCTION get_mood(_mood mood) RETURNS mood AS $$
 BEGIN
     RETURN 'happy';
@@ -119,11 +125,6 @@ $$ language sql;
 create function complex_id(z complex) returns complex as $$
     select z;
 $$ language sql;
-
--- domain of complex numbers on unit circle
-create domain unit_complex as complex check (
-  sqrt((VALUE).r*(VALUE).r + (VALUE).i*(VALUE).i) = 1
-);
 
 create function unitthing(z unit_complex) returns unit_complex as $$
     select z;
