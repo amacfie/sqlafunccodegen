@@ -270,6 +270,8 @@ class PythonGenerator:
             if graphile_type["enumVariants"]:
                 enum_name = f"Enum__{graphile_type['name']}"
                 e = f"class {enum_name}(str, Enum):\n"
+                if graphile_type["description"]:
+                    e += f"    {repr(graphile_type['description'])}\n"
                 e += "\n".join(
                     f"    {ev} = '{ev}'" for ev in graphile_type["enumVariants"]
                 )
@@ -353,6 +355,9 @@ class PythonGenerator:
                 continue
             class_ = self.graphile_class_by_id[class_id]
             out += "class Model__" + class_["name"] + "(pydantic.BaseModel):\n"
+            graphile_type = self.graphile_type_by_id[class_["typeId"]]
+            if graphile_type["description"]:
+                out += f"    {repr(graphile_type['description'])}\n"
             attrs = self.graphile_attrs_by_class_id[class_id]
             for attr in attrs:
                 basic_attr_type = (

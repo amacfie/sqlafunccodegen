@@ -100,6 +100,8 @@ CREATE TYPE complex AS (
     r       float,
     i       float
 );
+comment on type complex is 'A complex number';
+comment on column complex.r is 'The real part';
 
 create function complex_id(z complex) returns complex as $$
     select z;
