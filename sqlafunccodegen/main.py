@@ -1,5 +1,4 @@
 import asyncio
-import re
 from collections import Counter, defaultdict
 from enum import Enum
 from functools import lru_cache
@@ -207,6 +206,14 @@ _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray'] | None
 AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+
+def __convert_output(t, v):
+    S = pydantic.create_model(
+        'S',
+        f=(t, ...),
+        __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
+    )
+    return pydantic.TypeAdapter(S).validate_python({"f": v}).f
 """
 
 
@@ -384,7 +391,24 @@ class PythonGenerator:
             if class_id in completed_class_ids:
                 continue
             class_ = self.graphile_class_by_id[class_id]
-            out = "class Model__" + class_["name"] + "(pydantic.BaseModel):\n"
+            out = f"""class Model__{class_["name"]}(pydantic.BaseModel):
+    model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def validate_model(cls, data):
+        if isinstance(data, asyncpg.Record):
+            return dict(data.items())
+        elif isinstance(data, tuple):
+            # not sure when this can happen
+            return dict(
+                (k, v)
+                for k, v in zip(cls.model_fields, data)
+            )
+        else:
+            return data
+"""
+
             graphile_type = self.graphile_type_by_id[class_["typeId"]]
             if graphile_type["description"]:
                 out += f"    {repr(graphile_type['description'])}\n"
@@ -439,36 +463,16 @@ class PythonGenerator:
         else:
             out_return_type = scalar_return_type
 
-        if scalar_return_type.startswith("Model__"):
-            if procedure["returnsSet"]:
-                # the dict(i.items()) has us covered if asyncpg gives a dict
-                # or an asyncpg.Record. if it returns a tuple we're in trouble
-                # but that shouldn't happen?
-                out_python_return_stmt = (
-                    f"return (pydantic.TypeAdapter({scalar_return_type})"
-                    f".validate_python(None if i is None else dict(i.items()))"
-                    f"for i in r)"
-                )
-            else:
-                out_python_return_stmt = (
-                    f"return pydantic.TypeAdapter({scalar_return_type})"
-                    f".validate_python(None if r is None else dict(r.items()))"
-                )
-        elif scalar_return_type.startswith("Enum__"):
-            enum_type = re.split(r"\W+", scalar_return_type)[0]
-            if procedure["returnsSet"]:
-                out_python_return_stmt = (
-                    "return ("
-                    f"{enum_type}(i) if i is not None else None"
-                    " for i in r"
-                    ")"
-                )
-            else:
-                out_python_return_stmt = (
-                    f"return {enum_type}(r) if r is not None else None"
-                )
+        if procedure["returnsSet"]:
+            out_python_return_stmt = (
+                f"return ("
+                f"__convert_output({scalar_return_type}, i)"
+                f" for i in r)"
+            )
         else:
-            out_python_return_stmt = "return r"
+            out_python_return_stmt = (
+                f"return __convert_output({scalar_return_type}, r)"
+            )
 
         params_list = []
         for arg_type, arg_name in zip(arg_types, procedure["argNames"]):

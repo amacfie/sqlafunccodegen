@@ -21,6 +21,14 @@ _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray'] | None
 AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+
+def __convert_output(t, v):
+    S = pydantic.create_model(
+        'S',
+        f=(t, ...),
+        __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
+    )
+    return pydantic.TypeAdapter(S).validate_python({"f": v}).f
 ArrayIn__int4 = TypeAliasType('ArrayIn__int4', 'Sequence[Union[int, None]] | Sequence[ArrayIn__int4] | None')
 ArrayIn__text = TypeAliasType('ArrayIn__text', 'Sequence[Union[str, None]] | Sequence[ArrayIn__text] | None')
 Array__int4 = TypeAliasType('Array__int4', 'list[Union[int, None]] | list[Array__int4] | None')
@@ -32,12 +40,42 @@ class Enum__mood(str, Enum):
     neutral = 'neutral'
 
 class Model__complex(pydantic.BaseModel):
+    model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def validate_model(cls, data):
+        if isinstance(data, asyncpg.Record):
+            return dict(data.items())
+        elif isinstance(data, tuple):
+            # not sure when this can happen
+            return dict(
+                (k, v)
+                for k, v in zip(cls.model_fields, data)
+            )
+        else:
+            return data
     'A complex number'
     r: Annotated['Union[float, None]', pydantic.Field(description='The real part')]
     i: 'Union[float, None]'
 
 
 class Model__league(pydantic.BaseModel):
+    model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def validate_model(cls, data):
+        if isinstance(data, asyncpg.Record):
+            return dict(data.items())
+        elif isinstance(data, tuple):
+            # not sure when this can happen
+            return dict(
+                (k, v)
+                for k, v in zip(cls.model_fields, data)
+            )
+        else:
+            return data
     id: 'Union[int, None]'
     name: 'Union[str, None]'
     nullable: 'Union[str, None]'
@@ -51,7 +89,7 @@ async def array_id(
             getattr(sqlalchemy.func, 'array_id')(sqlalchemy.literal(arr, type_=postgresql.ARRAY(postgresql.INTEGER)))
         )
     )).scalar_one_or_none()
-    return r
+    return __convert_output(Array__int4, r)
 
 async def can_return_null(
     db_sesh: AsyncSession, 
@@ -62,7 +100,7 @@ async def can_return_null(
             getattr(sqlalchemy.func, 'can_return_null')()
         )
     )).scalar_one_or_none()
-    return r
+    return __convert_output(Union[str, None], r)
 
 async def complex_id(
     db_sesh: AsyncSession, z: Model__complex | None
@@ -73,7 +111,7 @@ async def complex_id(
             getattr(sqlalchemy.func, 'complex_id')(sqlalchemy.literal(None if z is None else z.model_dump(), type_=None))
         )
     )).scalar_one_or_none()
-    return pydantic.TypeAdapter(Model__complex | None).validate_python(None if r is None else dict(r.items()))
+    return __convert_output(Model__complex | None, r)
 
 async def count_leagues(
     db_sesh: AsyncSession, 
@@ -84,7 +122,7 @@ async def count_leagues(
             getattr(sqlalchemy.func, 'count_leagues')()
         )
     )).scalar_one_or_none()
-    return r
+    return __convert_output(Union[pydantic.JsonValue, None], r)
 
 async def count_leagues_by_nullable(
     db_sesh: AsyncSession, _nullable: Union[str, None]
@@ -95,7 +133,7 @@ async def count_leagues_by_nullable(
             getattr(sqlalchemy.func, 'count_leagues_by_nullable')(sqlalchemy.literal(_nullable, type_=postgresql.TEXT))
         )
     )).scalar_one_or_none()
-    return r
+    return __convert_output(Union[int, None], r)
 
 async def do_anyrange(
     db_sesh: AsyncSession, r: Any
@@ -106,7 +144,7 @@ async def do_anyrange(
             getattr(sqlalchemy.func, 'do_anyrange')(sqlalchemy.literal(r, type_=None))
         )
     )).scalar_one_or_none()
-    return r
+    return __convert_output(Union[None, None], r)
 
 async def get_lists(
     db_sesh: AsyncSession, _list: ArrayIn__text
@@ -117,7 +155,7 @@ async def get_lists(
             getattr(sqlalchemy.func, 'get_lists')(sqlalchemy.literal(_list, type_=postgresql.ARRAY(postgresql.TEXT)))
         )
     )).scalars()
-    return r
+    return (__convert_output(Array__text, i) for i in r)
 
 async def get_mood(
     db_sesh: AsyncSession, _mood: Enum__mood | None
@@ -128,7 +166,7 @@ async def get_mood(
             getattr(sqlalchemy.func, 'get_mood')(sqlalchemy.literal(_mood, type_=postgresql.ENUM(name='mood')))
         )
     )).scalar_one_or_none()
-    return Enum__mood(r) if r is not None else None
+    return __convert_output(Enum__mood | None, r)
 
 async def get_range(
     db_sesh: AsyncSession, 
@@ -139,7 +177,7 @@ async def get_range(
             getattr(sqlalchemy.func, 'get_range')()
         )
     )).scalar_one_or_none()
-    return r
+    return __convert_output(Any, r)
 
 async def getall(
     db_sesh: AsyncSession, 
@@ -150,7 +188,7 @@ async def getall(
             getattr(sqlalchemy.func, 'getall')()
         )
     )).scalars()
-    return (pydantic.TypeAdapter(Model__league | None).validate_python(None if i is None else dict(i.items()))for i in r)
+    return (__convert_output(Model__league | None, i) for i in r)
 
 async def ids(
     db_sesh: AsyncSession, 
@@ -161,7 +199,7 @@ async def ids(
             getattr(sqlalchemy.func, 'ids')()
         )
     )).scalars()
-    return r
+    return (__convert_output(Union[int, None], i) for i in r)
 
 async def nullables(
     db_sesh: AsyncSession, 
@@ -172,7 +210,7 @@ async def nullables(
             getattr(sqlalchemy.func, 'nullables')()
         )
     )).scalars()
-    return r
+    return (__convert_output(Union[str, None], i) for i in r)
 
 async def retvoid(
     db_sesh: AsyncSession, 
@@ -183,7 +221,7 @@ async def retvoid(
             getattr(sqlalchemy.func, 'retvoid')()
         )
     )).scalar_one_or_none()
-    return r
+    return __convert_output(Union[None, None], r)
 
 async def unitthing(
     db_sesh: AsyncSession, z: Model__complex | None
@@ -194,4 +232,4 @@ async def unitthing(
             getattr(sqlalchemy.func, 'unitthing')(sqlalchemy.literal(None if z is None else z.model_dump(), type_=None))
         )
     )).scalar_one_or_none()
-    return pydantic.TypeAdapter(Model__complex | None).validate_python(None if r is None else dict(r.items()))
+    return __convert_output(Model__complex | None, r)

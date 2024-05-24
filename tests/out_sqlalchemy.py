@@ -21,6 +21,14 @@ _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray'] | None
 AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+
+def __convert_output(t, v):
+    S = pydantic.create_model(
+        'S',
+        f=(t, ...),
+        __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
+    )
+    return pydantic.TypeAdapter(S).validate_python({"f": v}).f
 def array_id(
     arr: Any
 ) -> Any:
