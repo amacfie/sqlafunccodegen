@@ -1,6 +1,3 @@
--- docker run --name testdb --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16-bookworm
--- psql postgresql://postgres:postgres@localhost:5432/postgres -f tests/schema.ddl
-
 create table league (
     id serial primary key,
     name text not null,
