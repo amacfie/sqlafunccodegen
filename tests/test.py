@@ -41,5 +41,6 @@ class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
                     select(out_sqlalchemy.complex_id({"r": 1.0, "i": 2.0}))
                 )
             ).scalar_one_or_none()
+        assert result is not None
         self.assertEqual(result["r"], 1.0)
         self.assertEqual(result["i"], 2.0)
