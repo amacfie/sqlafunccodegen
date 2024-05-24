@@ -43,36 +43,3 @@ class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
             ).scalar_one_or_none()
         self.assertEqual(result["r"], 1.0)
         self.assertEqual(result["i"], 2.0)
-
-
-async def run_nullables():
-    async with (
-        AsyncSession(engine, expire_on_commit=False) as session,
-        session.begin(),
-    ):
-        print(list(await out.nullables(session)))
-
-
-async def run_count_leagues_by_nullable():
-    async with (
-        AsyncSession(engine, expire_on_commit=False) as session,
-        session.begin(),
-    ):
-        print(await out.count_leagues_by_nullable(session, "extra"))
-
-
-async def run_get_mood():
-    async with (
-        AsyncSession(engine, expire_on_commit=False) as session,
-        session.begin(),
-    ):
-        print(await out.get_mood(session, "happy"))
-
-
-async def run_complex_id():
-    async with (
-        AsyncSession(engine, expire_on_commit=False) as session,
-        session.begin(),
-    ):
-        v = out.Model__complex(r=1.0, i=2.0)
-        print(repr(await out.complex_id(session, v)))
