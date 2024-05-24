@@ -28,7 +28,7 @@ def __convert_output(t, v):
         f=(t, ...),
         __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
     )
-    return S.model_validate({'f': v}).f
+    return S.model_validate({'f': v}).f  # type: ignore
 ArrayIn__int4 = TypeAliasType('ArrayIn__int4', 'Sequence[Union[int, None]] | Sequence[ArrayIn__int4] | None')
 ArrayIn__text = TypeAliasType('ArrayIn__text', 'Sequence[Union[str, None]] | Sequence[ArrayIn__text] | None')
 Array__int4 = TypeAliasType('Array__int4', 'list[Union[int, None]] | list[Array__int4] | None')
