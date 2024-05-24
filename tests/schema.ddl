@@ -1,12 +1,35 @@
+CREATE TYPE complex AS (
+    r       float,
+    i       float
+);
+comment on type complex is 'A complex number';
+comment on column complex.r is 'The real part';
+
 create table league (
     id serial primary key,
     name text not null,
     nullable text,
-    list text[]
+    list text[],
+    cs complex[]
 );
 
 insert into league (name, nullable) values('Premier League', null);
 insert into league (name, nullable) values('Bundesliga', 'extra');
+
+create function all_leagues() returns setof league as $$
+    select * from league;
+$$ language sql;
+
+create function set_of_complex_arrays() returns setof complex[] as $$
+    select * from (values
+        (array[(1.0, 2.0), (3.0, 4.0)]::complex[]),
+        (array[(5.0, 6.0), (7.0, 8.0)]::complex[])
+    ) as t;
+$$ language sql;
+
+create function complex_array_id(ca complex[]) returns complex[] as $$
+    select ca;
+$$ language sql;
 
 create function count_leagues() returns json as $$
     select '{"count": 4}'::json;
@@ -93,13 +116,6 @@ create function do_anyrange(r anyrange) returns void as $$
       select null;
 $$ language sql;
 
-CREATE TYPE complex AS (
-    r       float,
-    i       float
-);
-comment on type complex is 'A complex number';
-comment on column complex.r is 'The real part';
-
 create function complex_id(z complex) returns complex as $$
     select z;
 $$ language sql;
@@ -115,4 +131,8 @@ $$ language sql;
 
 create function array_id(arr int[]) returns int[] as $$
     select arr;
+$$ language sql;
+
+create function first_any(a anyelement, b anyarray) returns anyelement as $$
+    select a;
 $$ language sql;

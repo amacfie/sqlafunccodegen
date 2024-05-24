@@ -19,8 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
-AnyArray = list[_T] | list['AnyArray'] | None
-AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+AnyArray = list[_T] | list['AnyArray']
+AnyArrayIn = Sequence[_T] | Sequence['AnyArray']
 
 def __convert_output(t, v):
     S = pydantic.create_model(
@@ -29,6 +29,20 @@ def __convert_output(t, v):
         __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
     )
     return S.model_validate({'f': v}).f  # type: ignore
+
+ 
+def __convert_input(v):
+    class S(pydantic.BaseModel):
+        model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
+        f: Any
+    
+    return S(f=v).model_dump()["f"]  # type: ignore
+def all_leagues(
+    
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'all_leagues')()
+
 def array_id(
     arr: Any
 ) -> Any:
@@ -40,6 +54,12 @@ def can_return_null(
 ) -> Any:
     
     return getattr(sqlalchemy.func, 'can_return_null')()
+
+def complex_array_id(
+    ca: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'complex_array_id')(ca)
 
 def complex_id(
     z: Any
@@ -64,6 +84,12 @@ def do_anyrange(
 ) -> Any:
     
     return getattr(sqlalchemy.func, 'do_anyrange')(r)
+
+def first_any(
+    a: Any, b: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'first_any')(a, b)
 
 def get_lists(
     _list: Any
@@ -106,6 +132,12 @@ def retvoid(
 ) -> Any:
     
     return getattr(sqlalchemy.func, 'retvoid')()
+
+def set_of_complex_arrays(
+    
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'set_of_complex_arrays')()
 
 def unitthing(
     z: Any

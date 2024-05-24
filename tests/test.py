@@ -36,7 +36,37 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
         v = [[1, 2], [3, 4]]
         async with get_db_sesh() as db_sesh:
             result = await out_python.array_id(db_sesh, v)
-        assert result == v
+        self.assertEqual(result, v)
+
+    async def test_first_any(self):
+        a = 0
+        b = [1, 2, 3]
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.first_any(db_sesh, a, b)
+        self.assertEqual(result, a)
+
+    async def test_complex_array_id(self):
+        ca = [out_python.Model__complex(r=2, i=4)]
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.complex_array_id(db_sesh, ca)
+        self.assertEqual(result, ca)
+
+    async def test_set_of_complex_arrays(self):
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.set_of_complex_arrays(db_sesh)
+        self.assertEqual(
+            list(result),
+            [
+                [
+                    out_python.Model__complex(r=1, i=2),
+                    out_python.Model__complex(r=3, i=4),
+                ],
+                [
+                    out_python.Model__complex(r=5, i=6),
+                    out_python.Model__complex(r=7, i=8),
+                ],
+            ],
+        )
 
 
 class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):

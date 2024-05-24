@@ -204,8 +204,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
-AnyArray = list[_T] | list['AnyArray'] | None
-AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+AnyArray = list[_T] | list['AnyArray']
+AnyArrayIn = Sequence[_T] | Sequence['AnyArray']
 
 def __convert_output(t, v):
     S = pydantic.create_model(
@@ -214,6 +214,14 @@ def __convert_output(t, v):
         __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
     )
     return S.model_validate({'f': v}).f  # type: ignore
+
+ 
+def __convert_input(v):
+    class S(pydantic.BaseModel):
+        model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
+        f: Any
+    
+    return S(f=v).model_dump()["f"]  # type: ignore
 """
 
 
@@ -255,7 +263,35 @@ class PythonGenerator:
     ) -> str:
         graphile_type = self.graphile_type_by_id[graphile_type_id]
 
-        if graphile_type["namespaceName"] == "pg_catalog":
+        if graphile_type["isPgArray"]:
+            item_graphile_type = self.graphile_type_by_id[
+                graphile_type["arrayItemTypeId"]
+            ]
+            if in_:
+                ret = f"ArrayIn__{item_graphile_type['name']}"
+            else:
+                ret = f"Array__{item_graphile_type['name']}"
+            item_python_type = self.graphile_type_to_python(
+                item_graphile_type["id"],
+                anyenum=anyenum,
+                in_=in_,
+            )
+            # https://github.com/pydantic/pydantic/issues/8346
+            if in_:
+                rtd = (
+                    f"{ret} = TypeAliasType('{ret}',"
+                    f" 'Sequence[{item_python_type}] | Sequence[{ret}]"
+                    " | None')"
+                )
+            else:
+                rtd = (
+                    f"{ret} = TypeAliasType('{ret}',"
+                    f" 'list[{item_python_type}] | list[{ret}] | None'"
+                    ")"
+                )
+            self.out_recursive_type_defs.add(rtd)
+            return ret
+        elif graphile_type["namespaceName"] == "pg_catalog":
             if graphile_type["name"] in pg_catalog_types:
                 ts = pg_catalog_types[graphile_type["name"]]
                 if anyenum and in_ and ts.python_type_anyenum_in:
@@ -269,34 +305,6 @@ class PythonGenerator:
 
                 # we have to avoid `None | None` because it's an error
                 return f"Union[{pt}, None]"
-            elif graphile_type["isPgArray"]:
-                item_graphile_type = self.graphile_type_by_id[
-                    graphile_type["arrayItemTypeId"]
-                ]
-                if in_:
-                    ret = f"ArrayIn__{item_graphile_type['name']}"
-                else:
-                    ret = f"Array__{item_graphile_type['name']}"
-                item_python_type = self.graphile_type_to_python(
-                    item_graphile_type["id"],
-                    anyenum=anyenum,
-                    in_=in_,
-                )
-                # https://github.com/pydantic/pydantic/issues/8346
-                if in_:
-                    rtd = (
-                        f"{ret} = TypeAliasType('{ret}',"
-                        f" 'Sequence[{item_python_type}] | Sequence[{ret}]"
-                        " | None')"
-                    )
-                else:
-                    rtd = (
-                        f"{ret} = TypeAliasType('{ret}',"
-                        f" 'list[{item_python_type}] | list[{ret}] | None'"
-                        ")"
-                    )
-                self.out_recursive_type_defs.add(rtd)
-                return ret
         elif graphile_type["namespaceName"] == self.schema:
             if graphile_type["enumVariants"]:
                 enum_name = f"Enum__{graphile_type['name']}"
@@ -323,19 +331,22 @@ class PythonGenerator:
     def graphile_type_to_sqla(self, graphile_type_id: str) -> str:
         graphile_type = self.graphile_type_by_id[graphile_type_id]
 
-        if graphile_type["namespaceName"] == "pg_catalog":
+        if graphile_type["isPgArray"]:
+            item_graphile_type = self.graphile_type_by_id[
+                graphile_type["arrayItemTypeId"]
+            ]
+            item_sqla_type = self.graphile_type_to_sqla(
+                item_graphile_type["id"]
+            )
+            if item_sqla_type == "None":
+                return "None"
+            else:
+                return f"postgresql.ARRAY({item_sqla_type})"
+        elif graphile_type["namespaceName"] == "pg_catalog":
             if graphile_type["name"] in pg_catalog_types:
                 sqla_type = pg_catalog_types[graphile_type["name"]].sqla_type
                 assert sqla_type is not None
                 return sqla_type
-            elif graphile_type["isPgArray"]:
-                item_graphile_type = self.graphile_type_by_id[
-                    graphile_type["arrayItemTypeId"]
-                ]
-                item_sqla_type = self.graphile_type_to_sqla(
-                    item_graphile_type["id"]
-                )
-                return f"postgresql.ARRAY({item_sqla_type})"
         elif graphile_type["namespaceName"] == self.schema:
             if graphile_type["enumVariants"]:
                 # we don't need the *enums parameter because we just use this
@@ -489,17 +500,7 @@ class PythonGenerator:
         if mode == "python":
             out_args_list = []
             for arg_type, arg_name in zip(arg_types, procedure["argNames"]):
-                python_type = self.graphile_type_to_python(
-                    arg_type["id"], anyenum=anyenum
-                )
-                if python_type.startswith("Model__"):
-                    # convert python type
-                    v = (
-                        f"None if {arg_name} is None"
-                        f" else {arg_name}.model_dump()"
-                    )
-                else:
-                    v = arg_name
+                v = f"__convert_input({arg_name})"
                 # e.g. if a function takes a JSONB, we can't just pass a python
                 # string because that becomes `TEXT` in pg which is a type
                 # error. however, in some circumstances the call works if type_

@@ -25,6 +25,7 @@ Capabilities:
   * some pseudotypes such as `anyarray`
   * Pydantic models for user-defined composite types
   * set-returning functions return iterables
+  * constraints in domains are not checked but the underlying type is used
   * the Python types may be too restrictive or not restrictive enough, the
     correspondence isn't perfect. some types aren't recognized and the generic
     form in which sqlafunccodegen attempts to send them to the database may not

@@ -19,8 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
-AnyArray = list[_T] | list['AnyArray'] | None
-AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+AnyArray = list[_T] | list['AnyArray']
+AnyArrayIn = Sequence[_T] | Sequence['AnyArray']
 
 def __convert_output(t, v):
     S = pydantic.create_model(
@@ -29,8 +29,18 @@ def __convert_output(t, v):
         __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
     )
     return S.model_validate({'f': v}).f  # type: ignore
+
+ 
+def __convert_input(v):
+    class S(pydantic.BaseModel):
+        model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
+        f: Any
+    
+    return S(f=v).model_dump()["f"]  # type: ignore
+ArrayIn__complex = TypeAliasType('ArrayIn__complex', 'Sequence[Model__complex | None] | Sequence[ArrayIn__complex] | None')
 ArrayIn__int4 = TypeAliasType('ArrayIn__int4', 'Sequence[Union[int, None]] | Sequence[ArrayIn__int4] | None')
 ArrayIn__text = TypeAliasType('ArrayIn__text', 'Sequence[Union[str, None]] | Sequence[ArrayIn__text] | None')
+Array__complex = TypeAliasType('Array__complex', 'list[Model__complex | None] | list[Array__complex] | None')
 Array__int4 = TypeAliasType('Array__int4', 'list[Union[int, None]] | list[Array__int4] | None')
 Array__text = TypeAliasType('Array__text', 'list[Union[str, None]] | list[Array__text] | None')
 
@@ -80,13 +90,25 @@ class Model__league(pydantic.BaseModel):
     name: 'Union[str, None]'
     nullable: 'Union[str, None]'
     list: 'Array__text'
+    cs: 'Array__complex'
+async def all_leagues(
+    db_sesh: AsyncSession, 
+) -> Iterable[Model__league | None]:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'all_leagues')()
+        )
+    )).scalars()
+    return (__convert_output(Model__league | None, i) for i in r)
+
 async def array_id(
     db_sesh: AsyncSession, arr: ArrayIn__int4
 ) -> Array__int4:
     
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'array_id')(sqlalchemy.literal(arr, type_=postgresql.ARRAY(postgresql.INTEGER)))
+            getattr(sqlalchemy.func, 'array_id')(sqlalchemy.literal(__convert_input(arr), type_=postgresql.ARRAY(postgresql.INTEGER)))
         )
     )).scalar_one_or_none()
     return __convert_output(Array__int4, r)
@@ -102,13 +124,24 @@ async def can_return_null(
     )).scalar_one_or_none()
     return __convert_output(Union[str, None], r)
 
+async def complex_array_id(
+    db_sesh: AsyncSession, ca: ArrayIn__complex
+) -> Array__complex:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'complex_array_id')(sqlalchemy.literal(__convert_input(ca), type_=None))
+        )
+    )).scalar_one_or_none()
+    return __convert_output(Array__complex, r)
+
 async def complex_id(
     db_sesh: AsyncSession, z: Model__complex | None
 ) -> Model__complex | None:
     
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'complex_id')(sqlalchemy.literal(None if z is None else z.model_dump(), type_=None))
+            getattr(sqlalchemy.func, 'complex_id')(sqlalchemy.literal(__convert_input(z), type_=None))
         )
     )).scalar_one_or_none()
     return __convert_output(Model__complex | None, r)
@@ -130,7 +163,7 @@ async def count_leagues_by_nullable(
     'Count leagues by nullable'
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'count_leagues_by_nullable')(sqlalchemy.literal(_nullable, type_=postgresql.TEXT))
+            getattr(sqlalchemy.func, 'count_leagues_by_nullable')(sqlalchemy.literal(__convert_input(_nullable), type_=postgresql.TEXT))
         )
     )).scalar_one_or_none()
     return __convert_output(Union[int, None], r)
@@ -141,10 +174,21 @@ async def do_anyrange(
     
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'do_anyrange')(sqlalchemy.literal(r, type_=None))
+            getattr(sqlalchemy.func, 'do_anyrange')(sqlalchemy.literal(__convert_input(r), type_=None))
         )
     )).scalar_one_or_none()
     return __convert_output(Union[None, None], r)
+
+async def first_any(
+    db_sesh: AsyncSession, a: Union[_T, None], b: Union[AnyArrayIn[_T], None]
+) -> Union[_T, None]:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'first_any')(sqlalchemy.literal(__convert_input(a), type_=None), sqlalchemy.literal(__convert_input(b), type_=None))
+        )
+    )).scalar_one_or_none()
+    return __convert_output(Union[_T, None], r)
 
 async def get_lists(
     db_sesh: AsyncSession, _list: ArrayIn__text
@@ -152,7 +196,7 @@ async def get_lists(
     
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'get_lists')(sqlalchemy.literal(_list, type_=postgresql.ARRAY(postgresql.TEXT)))
+            getattr(sqlalchemy.func, 'get_lists')(sqlalchemy.literal(__convert_input(_list), type_=postgresql.ARRAY(postgresql.TEXT)))
         )
     )).scalars()
     return (__convert_output(Array__text, i) for i in r)
@@ -163,7 +207,7 @@ async def get_mood(
     
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'get_mood')(sqlalchemy.literal(_mood, type_=postgresql.ENUM(name='mood')))
+            getattr(sqlalchemy.func, 'get_mood')(sqlalchemy.literal(__convert_input(_mood), type_=postgresql.ENUM(name='mood')))
         )
     )).scalar_one_or_none()
     return __convert_output(Enum__mood | None, r)
@@ -223,13 +267,24 @@ async def retvoid(
     )).scalar_one_or_none()
     return __convert_output(Union[None, None], r)
 
+async def set_of_complex_arrays(
+    db_sesh: AsyncSession, 
+) -> Iterable[Array__complex]:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'set_of_complex_arrays')()
+        )
+    )).scalars()
+    return (__convert_output(Array__complex, i) for i in r)
+
 async def unitthing(
     db_sesh: AsyncSession, z: Model__complex | None
 ) -> Model__complex | None:
     
     r = (await db_sesh.execute(
         sqlalchemy.select(
-            getattr(sqlalchemy.func, 'unitthing')(sqlalchemy.literal(None if z is None else z.model_dump(), type_=None))
+            getattr(sqlalchemy.func, 'unitthing')(sqlalchemy.literal(__convert_input(z), type_=None))
         )
     )).scalar_one_or_none()
     return __convert_output(Model__complex | None, r)
