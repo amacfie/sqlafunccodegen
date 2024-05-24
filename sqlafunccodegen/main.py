@@ -80,12 +80,12 @@ class TypeStrings:
 # types within a schema have unique names
 # https://magicstack.github.io/asyncpg/current/usage.html#type-conversion
 pg_catalog_types = {
-    "int2": TypeStrings(python_type="int", sqla_type="postgres.INTEGER"),
-    "int4": TypeStrings(python_type="int", sqla_type="postgres.INTEGER"),
-    "int8": TypeStrings(python_type="int", sqla_type="postgres.INTEGER"),
-    "text": TypeStrings(python_type="str", sqla_type="postgres.TEXT"),
-    "varchar": TypeStrings(python_type="str", sqla_type="postgres.VARCHAR"),
-    "char": TypeStrings(python_type="str", sqla_type="postgres.CHAR"),
+    "int2": TypeStrings(python_type="int", sqla_type="postgresql.INTEGER"),
+    "int4": TypeStrings(python_type="int", sqla_type="postgresql.INTEGER"),
+    "int8": TypeStrings(python_type="int", sqla_type="postgresql.INTEGER"),
+    "text": TypeStrings(python_type="str", sqla_type="postgresql.TEXT"),
+    "varchar": TypeStrings(python_type="str", sqla_type="postgresql.VARCHAR"),
+    "char": TypeStrings(python_type="str", sqla_type="postgresql.CHAR"),
     "uuid": TypeStrings(python_type="UUID", sqla_type="sqlalchemy.UUID"),
     "bool": TypeStrings(python_type="bool", sqla_type="sqlalchemy.Boolean"),
     "void": TypeStrings(python_type="None"),
@@ -178,7 +178,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, Literal, TypeVar, Union
+from typing import Annotated, Any, Iterable, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 

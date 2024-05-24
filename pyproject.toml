@@ -22,6 +22,7 @@ namespaces = false
 
 [tool.black]
 line-length = 80
+extend-exclude = '^/tests/out'
 
 [tool.isort]
 profile = "black"
@@ -29,6 +30,7 @@ line_length = 80
 lines_after_imports = 2
 combine_as_imports = true
 py_version=311
+extend_skip_glob = ["tests/out*"]
 
 [tool.pyright]
 pythonVersion = "3.11"
@@ -39,3 +41,4 @@ useLibraryCodeForTypes = true
 [tool.ruff]
 lint.select = ["F401"]
 line-length = 80
+extend-exclude = ['tests/out*']
