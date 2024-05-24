@@ -213,7 +213,7 @@ def __convert_output(t, v):
         f=(t, ...),
         __config__=pydantic.ConfigDict(arbitrary_types_allowed=True),
     )
-    return pydantic.TypeAdapter(S).validate_python({"f": v}).f
+    return S.model_validate({'f': v}).f
 """
 
 
