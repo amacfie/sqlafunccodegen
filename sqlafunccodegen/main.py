@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 from collections import Counter, defaultdict
 from enum import Enum
 from functools import lru_cache
@@ -7,6 +6,7 @@ from typing import Annotated, Sequence
 
 import dukpy
 import typer
+from pydantic import BaseModel, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio.engine import AsyncEngine, create_async_engine
@@ -69,12 +69,21 @@ def main(
     print(python_generator.generate(mode))
 
 
-@dataclasses.dataclass
-class TypeStrings:
+class TypeStrings(BaseModel):
     python_type: str
     # if an anyenum type is used, all polymorphic types become enums
     python_type_anyenum: str | None = None
+    python_type_in: str | None = None
+    python_type_anyenum_in: str | None = None
     sqla_type: str | None = None
+
+    @model_validator(mode="after")
+    def validate_model(self):
+        if self.python_type_anyenum_in is None:
+            assert (self.python_type_in is None) or (
+                self.python_type_anyenum is None
+            )
+        return self
 
 
 # types within a schema have unique names
@@ -99,6 +108,8 @@ pg_catalog_types = {
         python_type="AnyArray[_T]",
         sqla_type="None",
         python_type_anyenum="AnyArray[_E]",
+        python_type_in="AnyArrayIn[_T]",
+        python_type_anyenum_in="AnyArrayIn[_E]",
     ),
     "anyelement": TypeStrings(
         python_type="_T", sqla_type="None", python_type_anyenum="_E"
@@ -113,6 +124,8 @@ pg_catalog_types = {
         python_type="AnyArray[_T]",
         sqla_type="None",
         python_type_anyenum="AnyArray[_E]",
+        python_type_in="AnyArrayIn[_T]",
+        python_type_anyenum_in="AnyArrayIn[_E]",
     ),
     "bit": TypeStrings(
         python_type="asyncpg.BitString", sqla_type="postgresql.BIT"
@@ -178,7 +191,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, TypeVar, Union
+from typing import Annotated, Any, Iterable, Sequence, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 
@@ -192,6 +205,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray'] | None
+AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
 """
 
 
@@ -229,41 +243,50 @@ class PythonGenerator:
 
     @lru_cache(maxsize=None)
     def graphile_type_to_python(
-        self, graphile_type_id: str, anyenum: bool
+        self, graphile_type_id: str, anyenum: bool, in_: bool | None = None
     ) -> str:
         graphile_type = self.graphile_type_by_id[graphile_type_id]
 
         if graphile_type["namespaceName"] == "pg_catalog":
             if graphile_type["name"] in pg_catalog_types:
-                if (
-                    anyenum
-                    and pg_catalog_types[
-                        graphile_type["name"]
-                    ].python_type_anyenum
-                ):
-                    pct = pg_catalog_types[
-                        graphile_type["name"]
-                    ].python_type_anyenum
+                ts = pg_catalog_types[graphile_type["name"]]
+                if anyenum and in_ and ts.python_type_anyenum_in:
+                    pt = ts.python_type_anyenum_in
+                elif anyenum and ts.python_type_anyenum:
+                    pt = ts.python_type_anyenum
+                elif in_ and ts.python_type_in:
+                    pt = ts.python_type_in
                 else:
-                    pct = pg_catalog_types[graphile_type["name"]].python_type
+                    pt = ts.python_type
 
                 # we have to avoid `None | None` because it's an error
-                return f"Union[{pct}, None]"
+                return f"Union[{pt}, None]"
             elif graphile_type["isPgArray"]:
                 item_graphile_type = self.graphile_type_by_id[
                     graphile_type["arrayItemTypeId"]
                 ]
-                ret = f"Array__{item_graphile_type['name']}"
+                if in_:
+                    ret = f"ArrayIn__{item_graphile_type['name']}"
+                else:
+                    ret = f"Array__{item_graphile_type['name']}"
                 item_python_type = self.graphile_type_to_python(
                     item_graphile_type["id"],
                     anyenum=anyenum,
+                    in_=in_,
                 )
                 # https://github.com/pydantic/pydantic/issues/8346
-                rtd = (
-                    f"{ret} = TypeAliasType('{ret}', "
-                    f"'list[{item_python_type}] | list[{ret}] | None'"
-                    ")"
-                )
+                if in_:
+                    rtd = (
+                        f"{ret} = TypeAliasType('{ret}',"
+                        f" 'Sequence[{item_python_type}] | Sequence[{ret}]"
+                        " | None')"
+                    )
+                else:
+                    rtd = (
+                        f"{ret} = TypeAliasType('{ret}',"
+                        f" 'list[{item_python_type}] | list[{ret}] | None'"
+                        ")"
+                    )
                 self.out_recursive_type_defs.add(rtd)
                 return ret
         elif graphile_type["namespaceName"] == self.schema:
@@ -284,6 +307,7 @@ class PythonGenerator:
                 return self.graphile_type_to_python(
                     graphile_type["domainBaseTypeId"],
                     anyenum=anyenum,
+                    in_=in_,
                 )
         return "Any"
 
@@ -310,6 +334,10 @@ class PythonGenerator:
                 # for casting
                 return (
                     "postgresql.ENUM(name=" f"{repr(graphile_type['name'])}" ")"
+                )
+            elif graphile_type["domainBaseTypeId"] is not None:
+                return self.graphile_type_to_sqla(
+                    graphile_type["domainBaseTypeId"],
                 )
         return "None"
 
@@ -338,9 +366,10 @@ class PythonGenerator:
         out_models = "\n\n".join(sorted(self.generate_models()))
 
         ret = FRONTMATTER
-        ret += "\n".join(sorted(self.out_recursive_type_defs)) + "\n\n"
-        ret += "\n".join(sorted(self.out_enums)) + "\n\n"
-        ret += out_models
+        if mode == Mode.python:
+            ret += "\n".join(sorted(self.out_recursive_type_defs)) + "\n\n"
+            ret += "\n".join(sorted(self.out_enums)) + "\n\n"
+            ret += out_models
         ret += out_procedures
 
         return ret
@@ -401,7 +430,7 @@ class PythonGenerator:
         )
 
         scalar_return_type = self.graphile_type_to_python(
-            return_type["id"], anyenum=anyenum
+            return_type["id"], anyenum=anyenum, in_=False
         )
         if procedure["returnsSet"]:
             # we won't get null
@@ -432,7 +461,7 @@ class PythonGenerator:
             s = f"{arg_name}: "
             if mode == "python":
                 s += self.graphile_type_to_python(
-                    arg_type["id"], anyenum=anyenum
+                    arg_type["id"], anyenum=anyenum, in_=True
                 )
             else:
                 s += "Any"

@@ -6,7 +6,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, TypeVar, Union
+from typing import Annotated, Any, Iterable, Sequence, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 
@@ -20,24 +20,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray'] | None
-Array__text = TypeAliasType('Array__text', 'list[Union[str, None]] | list[Array__text] | None')
+AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+def array_id(
+    arr: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'array_id')(arr)
 
-class Enum__mood(str, Enum):
-    happy = 'happy'
-    sad = 'sad'
-    neutral = 'neutral'
-
-class Model__complex(pydantic.BaseModel):
-    'A complex number'
-    r: Annotated['Union[float, None]', pydantic.Field(description='The real part')]
-    i: 'Union[float, None]'
-
-
-class Model__league(pydantic.BaseModel):
-    id: 'Union[int, None]'
-    name: 'Union[str, None]'
-    nullable: 'Union[str, None]'
-    list: 'Array__text'
 def can_return_null(
     
 ) -> Any:

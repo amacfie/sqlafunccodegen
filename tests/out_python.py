@@ -6,7 +6,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, TypeVar, Union
+from typing import Annotated, Any, Iterable, Sequence, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 
@@ -20,6 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray'] | None
+AnyArrayIn = Sequence[_T] | Sequence['AnyArray'] | None
+ArrayIn__int4 = TypeAliasType('ArrayIn__int4', 'Sequence[Union[int, None]] | Sequence[ArrayIn__int4] | None')
+ArrayIn__text = TypeAliasType('ArrayIn__text', 'Sequence[Union[str, None]] | Sequence[ArrayIn__text] | None')
+Array__int4 = TypeAliasType('Array__int4', 'list[Union[int, None]] | list[Array__int4] | None')
 Array__text = TypeAliasType('Array__text', 'list[Union[str, None]] | list[Array__text] | None')
 
 class Enum__mood(str, Enum):
@@ -38,6 +42,17 @@ class Model__league(pydantic.BaseModel):
     name: 'Union[str, None]'
     nullable: 'Union[str, None]'
     list: 'Array__text'
+async def array_id(
+    db_sesh: AsyncSession, arr: ArrayIn__int4
+) -> Array__int4:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'array_id')(sqlalchemy.literal(arr, type_=postgresql.ARRAY(postgresql.INTEGER)))
+        )
+    )).scalar_one_or_none()
+    return r
+
 async def can_return_null(
     db_sesh: AsyncSession, 
 ) -> Union[str, None]:
@@ -94,7 +109,7 @@ async def do_anyrange(
     return r
 
 async def get_lists(
-    db_sesh: AsyncSession, _list: Array__text
+    db_sesh: AsyncSession, _list: ArrayIn__text
 ) -> Iterable[Array__text]:
     
     r = (await db_sesh.execute(

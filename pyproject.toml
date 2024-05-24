@@ -8,6 +8,7 @@ name = "sqlafunccodegen"
 dependencies = [
     "asyncpg==0.29.*",
     "dukpy==0.3.*",
+    "pydantic==2.*",
     "sqlalchemy==2.0.30",
     "typer==0.12.*"
 ]
@@ -37,6 +38,7 @@ pythonVersion = "3.11"
 reportIncompatibleVariableOverride = true
 reportIncompatibleMethodOverride = true
 useLibraryCodeForTypes = true
+strictListInference = true
 
 [tool.ruff]
 lint.select = ["F401"]

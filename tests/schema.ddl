@@ -112,3 +112,7 @@ create domain unit_complex as complex check (
 create function unitthing(z unit_complex) returns unit_complex as $$
     select z;
 $$ language sql;
+
+create function array_id(arr int[]) returns int[] as $$
+    select arr;
+$$ language sql;

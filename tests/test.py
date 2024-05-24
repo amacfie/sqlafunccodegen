@@ -32,6 +32,12 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.r, 1.0)
         self.assertEqual(result.i, 2.0)
 
+    async def test_array_id(self):
+        v = [[1, 2], [3, 4]]
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.array_id(db_sesh, v)
+        assert result == v
+
 
 class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
     async def test_complex_id(self):
