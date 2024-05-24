@@ -1,6 +1,6 @@
 import asyncio
-import io
 import importlib.util
+import io
 import pathlib
 import sys
 import tempfile
