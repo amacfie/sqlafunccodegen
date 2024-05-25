@@ -1,6 +1,7 @@
 import unittest
 from contextlib import asynccontextmanager
 
+import asyncpg
 from sqlalchemy import NullPool, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
@@ -45,6 +46,13 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
             result = await out_python.first_any(db_sesh, a, b)
         self.assertEqual(result, a)
 
+    async def test_circle_id(self):
+        c = asyncpg.Circle(center=asyncpg.Point(1, 2), radius=3)
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.circle_id(db_sesh, c)
+        assert isinstance(result, asyncpg.Circle)
+        self.assertEqual(result, c)
+
     async def test_complex_array_id(self):
         ca = [out_python.Model__complex(r=2, i=4)]
         async with get_db_sesh() as db_sesh:
@@ -73,6 +81,36 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
         async with get_db_sesh() as db_sesh:
             result = await out_python.unitthing(db_sesh, z)
         self.assertEqual(result, z)
+
+    async def test_get_mood(self):
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.get_mood(
+                db_sesh, out_python.Enum__mood.sad
+            )
+        self.assertEqual(result, out_python.Enum__mood.happy)
+
+    async def test_jsonb_id(self):
+        s = "test"
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.jsonb_id(db_sesh, s)
+        self.assertEqual(result, s)
+
+    async def test_c2vector_id(self):
+        c2v = out_python.Model__c2vector(
+            z1=out_python.Model__complex(r=1, i=2),
+            z2=out_python.Model__complex(r=3, i=4),
+            moods=[out_python.Enum__mood.happy],
+        )
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.c2vector_id(db_sesh, c2v)
+        self.assertEqual(result, c2v)
+
+    @unittest.skip("See https://github.com/amacfie/sqlafunccodegen/issues/10")
+    async def test_anyenum_f(self):
+        e = out_python.Enum__mood.happy
+        async with get_db_sesh() as db_sesh:
+            result = await out_python.anyenum_f(db_sesh, e, [e])
+        self.assertEqual(result, e)
 
     async def test_all_leagues(self):
         async with get_db_sesh() as db_sesh:

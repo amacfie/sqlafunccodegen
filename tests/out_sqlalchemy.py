@@ -43,17 +43,35 @@ def all_leagues(
     
     return getattr(sqlalchemy.func, 'all_leagues')()
 
+def anyenum_f(
+    a: Any, b: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'anyenum_f')(a, b)
+
 def array_id(
     arr: Any
 ) -> Any:
     
     return getattr(sqlalchemy.func, 'array_id')(arr)
 
+def c2vector_id(
+    c: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'c2vector_id')(c)
+
 def can_return_null(
     
 ) -> Any:
     
     return getattr(sqlalchemy.func, 'can_return_null')()
+
+def circle_id(
+    c: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'circle_id')(c)
 
 def complex_array_id(
     ca: Any
@@ -120,6 +138,12 @@ def ids(
 ) -> Any:
     
     return getattr(sqlalchemy.func, 'ids')()
+
+def jsonb_id(
+    j: Any
+) -> Any:
+    
+    return getattr(sqlalchemy.func, 'jsonb_id')(j)
 
 def nullables(
     

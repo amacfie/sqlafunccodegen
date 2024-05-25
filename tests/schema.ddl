@@ -19,11 +19,21 @@ create domain unit_complex as complex check (
 
 CREATE TYPE mood AS ENUM ('happy', 'sad', 'neutral');
 
+create type c2vector as (
+    z1 complex,
+    z2 complex,
+    moods mood[]
+);
+
 
 insert into league (name, nullable) values('Premier League', null);
 insert into league (name, nullable, cs) values(
     'Bundesliga', 'extra', array[(10, 20), (30, 40)]::complex[]);
 
+
+create function c2vector_id(c c2vector) returns c2vector as $$
+    select c;
+$$ language sql;
 
 create function all_leagues() returns setof league as $$
     select * from league order by id;
@@ -137,3 +147,17 @@ $$ language sql;
 create function first_any(a anyelement, b anyarray) returns anyelement as $$
     select a;
 $$ language sql;
+
+create function circle_id(c circle) returns circle as $$
+    select c;
+$$ language sql;
+
+create function anyenum_f(a anyenum, b anyarray) returns anyenum as $$
+    select a;
+$$ language sql;
+
+create function jsonb_id(j jsonb) returns jsonb as $$
+    select j;
+$$ language sql;
+
+

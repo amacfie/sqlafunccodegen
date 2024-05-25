@@ -42,12 +42,34 @@ ArrayIn__int4 = TypeAliasType('ArrayIn__int4', 'Sequence[Union[int, None]] | Seq
 ArrayIn__text = TypeAliasType('ArrayIn__text', 'Sequence[Union[str, None]] | Sequence[ArrayIn__text] | None')
 Array__complex = TypeAliasType('Array__complex', 'list[Model__complex | None] | list[Array__complex] | None')
 Array__int4 = TypeAliasType('Array__int4', 'list[Union[int, None]] | list[Array__int4] | None')
+Array__mood = TypeAliasType('Array__mood', 'list[Enum__mood | None] | list[Array__mood] | None')
 Array__text = TypeAliasType('Array__text', 'list[Union[str, None]] | list[Array__text] | None')
 
 class Enum__mood(str, Enum):
     happy = 'happy'
     sad = 'sad'
     neutral = 'neutral'
+
+class Model__c2vector(pydantic.BaseModel):
+    model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def validate_model(cls, data):
+        if isinstance(data, asyncpg.Record):
+            return dict(data.items())
+        elif isinstance(data, tuple):
+            # not sure when this can happen
+            return dict(
+                (k, v)
+                for k, v in zip(cls.model_fields, data)
+            )
+        else:
+            return data
+    z1: 'Model__complex | None'
+    z2: 'Model__complex | None'
+    moods: 'Array__mood'
+
 
 class Model__complex(pydantic.BaseModel):
     model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
@@ -102,6 +124,17 @@ async def all_leagues(
     )).scalars()
     return (__convert_output(Model__league | None, i) for i in r)
 
+async def anyenum_f(
+    db_sesh: AsyncSession, a: Union[_E, None], b: Union[AnyArrayIn[_E], None]
+) -> Union[_E, None]:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'anyenum_f')(sqlalchemy.literal(__convert_input(a), type_=None), sqlalchemy.literal(__convert_input(b), type_=None))
+        )
+    )).scalar_one_or_none()
+    return __convert_output(Union[_E, None], r)
+
 async def array_id(
     db_sesh: AsyncSession, arr: ArrayIn__int4
 ) -> Array__int4:
@@ -113,6 +146,17 @@ async def array_id(
     )).scalar_one_or_none()
     return __convert_output(Array__int4, r)
 
+async def c2vector_id(
+    db_sesh: AsyncSession, c: Model__c2vector | None
+) -> Model__c2vector | None:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'c2vector_id')(sqlalchemy.literal(__convert_input(c), type_=None))
+        )
+    )).scalar_one_or_none()
+    return __convert_output(Model__c2vector | None, r)
+
 async def can_return_null(
     db_sesh: AsyncSession, 
 ) -> Union[str, None]:
@@ -123,6 +167,17 @@ async def can_return_null(
         )
     )).scalar_one_or_none()
     return __convert_output(Union[str, None], r)
+
+async def circle_id(
+    db_sesh: AsyncSession, c: Union[asyncpg.Circle, None]
+) -> Union[asyncpg.Circle, None]:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'circle_id')(sqlalchemy.literal(__convert_input(c), type_=None))
+        )
+    )).scalar_one_or_none()
+    return __convert_output(Union[asyncpg.Circle, None], r)
 
 async def complex_array_id(
     db_sesh: AsyncSession, ca: ArrayIn__complex
@@ -244,6 +299,17 @@ async def ids(
         )
     )).scalars()
     return (__convert_output(Union[int, None], i) for i in r)
+
+async def jsonb_id(
+    db_sesh: AsyncSession, j: Union[pydantic.JsonValue, None]
+) -> Union[pydantic.JsonValue, None]:
+    
+    r = (await db_sesh.execute(
+        sqlalchemy.select(
+            getattr(sqlalchemy.func, 'jsonb_id')(sqlalchemy.literal(__convert_input(j), type_=postgresql.JSONB))
+        )
+    )).scalar_one_or_none()
+    return __convert_output(Union[pydantic.JsonValue, None], r)
 
 async def nullables(
     db_sesh: AsyncSession, 
