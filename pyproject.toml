@@ -39,6 +39,8 @@ reportIncompatibleVariableOverride = true
 reportIncompatibleMethodOverride = true
 useLibraryCodeForTypes = true
 strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
 
 [tool.ruff]
 lint.select = ["F401"]
