@@ -33,6 +33,7 @@ Capabilities:
   * comments as docstrings
   * functions with overloads not supported
   * `IN`, `INOUT`, and `VARIADIC` params not supported
+  * default values are not available
 
 Generated code dependencies:
 * asyncpg
