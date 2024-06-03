@@ -30,12 +30,12 @@ def __convert_output(t, v):
     )
     return S.model_validate({'f': v}).f  # type: ignore
 
- 
+
 def __convert_input(v):
     class S(pydantic.BaseModel):
         model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
         f: Any
-    
+
     return S(f=v).model_dump()["f"]  # type: ignore
 ArrayIn__complex = TypeAliasType('ArrayIn__complex', 'Sequence[Model__complex | None] | Sequence[ArrayIn__complex] | None')
 ArrayIn__int4 = TypeAliasType('ArrayIn__int4', 'Sequence[Union[int, None]] | Sequence[ArrayIn__int4] | None')
@@ -51,6 +51,7 @@ class Enum__mood(str, Enum):
     neutral = 'neutral'
 
 class Model__c2vector(pydantic.BaseModel):
+
     model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
 
     @pydantic.model_validator(mode="before")
@@ -72,6 +73,8 @@ class Model__c2vector(pydantic.BaseModel):
 
 
 class Model__complex(pydantic.BaseModel):
+    'A complex number'
+
     model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
 
     @pydantic.model_validator(mode="before")
@@ -87,12 +90,12 @@ class Model__complex(pydantic.BaseModel):
             )
         else:
             return data
-    'A complex number'
     r: Annotated['Union[float, None]', pydantic.Field(description='The real part')]
     i: 'Union[float, None]'
 
 
 class Model__league(pydantic.BaseModel):
+
     model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
 
     @pydantic.model_validator(mode="before")

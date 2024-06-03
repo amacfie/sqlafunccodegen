@@ -30,12 +30,12 @@ def __convert_output(t, v):
     )
     return S.model_validate({'f': v}).f  # type: ignore
 
- 
+
 def __convert_input(v):
     class S(pydantic.BaseModel):
         model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
         f: Any
-    
+
     return S(f=v).model_dump()["f"]  # type: ignore
 def all_leagues(
     

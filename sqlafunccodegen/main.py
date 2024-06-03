@@ -215,12 +215,12 @@ def __convert_output(t, v):
     )
     return S.model_validate({'f': v}).f  # type: ignore
 
- 
+
 def __convert_input(v):
     class S(pydantic.BaseModel):
         model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
         f: Any
-    
+
     return S(f=v).model_dump()["f"]  # type: ignore
 """
 
@@ -403,7 +403,11 @@ class PythonGenerator:
             if class_id in completed_class_ids:
                 continue
             class_ = self.graphile_class_by_id[class_id]
-            out = f"""class Model__{class_["name"]}(pydantic.BaseModel):
+            out = f"class Model__{class_['name']}(pydantic.BaseModel):\n"
+            graphile_type = self.graphile_type_by_id[class_["typeId"]]
+            if graphile_type["description"]:
+                out += f"    {repr(graphile_type['description'])}\n"
+            out += """
     model_config=pydantic.ConfigDict(arbitrary_types_allowed=True)
 
     @pydantic.model_validator(mode="before")
@@ -421,9 +425,6 @@ class PythonGenerator:
             return data
 """
 
-            graphile_type = self.graphile_type_by_id[class_["typeId"]]
-            if graphile_type["description"]:
-                out += f"    {repr(graphile_type['description'])}\n"
             attrs = self.graphile_attrs_by_class_id[class_id]
             for attr in attrs:
                 basic_attr_type = (
