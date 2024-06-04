@@ -1,1 +1,1 @@
-include introspectionQuery.js
+include sqlafunccodegen/introspectionQuery.js

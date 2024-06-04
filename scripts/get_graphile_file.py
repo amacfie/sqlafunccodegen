@@ -14,7 +14,7 @@ def main():
     introspection_query_path = PROJECT_ROOT / pathlib.Path(
         "js_modules/graphile-build-pg/node8plus/plugins/introspectionQuery.js"
     )
-    compiled_path = PROJECT_ROOT / "introspectionQuery.js"
+    compiled_path = PROJECT_ROOT / "sqlafunccodegen" / "introspectionQuery.js"
     compiled_path.write_text(
         dukpy.babel_compile(introspection_query_path.read_text())["code"]  # type: ignore
     )

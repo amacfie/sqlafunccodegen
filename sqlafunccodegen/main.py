@@ -1,4 +1,5 @@
 import asyncio
+import pathlib
 from collections import Counter, defaultdict
 from enum import Enum
 from functools import lru_cache
@@ -21,7 +22,8 @@ async def get_graphile_data(engine: AsyncEngine, schema: str) -> Sequence[dict]:
         server_version_num = (await session.execute(version_q)).scalar_one()
 
     jsi = dukpy.JSInterpreter()
-    jsi.loader.register_path(".")
+    pkg_path = pathlib.Path(__file__).parent.resolve()
+    jsi.loader.register_path(str(pkg_path))
     jsi.evaljs("m = require('introspectionQuery')")
     introspection_q = jsi.evaljs(
         "m.makeIntrospectionQuery(dukpy['serverVersionNum'])",
