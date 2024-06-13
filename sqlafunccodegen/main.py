@@ -90,6 +90,7 @@ class TypeStrings(BaseModel):
 
 # types within a schema have unique names
 # https://magicstack.github.io/asyncpg/current/usage.html#type-conversion
+# https://github.com/sqlalchemy/sqlalchemy/blob/52b03301b3ca6cb285b5290de4dfe6806f4836f1/lib/sqlalchemy/sql/sqltypes.py#L3730
 pg_catalog_types = {
     "int2": TypeStrings(python_type="int", sqla_type="postgresql.INTEGER"),
     "int4": TypeStrings(python_type="int", sqla_type="postgresql.INTEGER"),
