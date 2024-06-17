@@ -6,7 +6,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, Sequence, TypeVar, Union
+from typing import Annotated, Any, Iterable, Mapping, Sequence, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 
@@ -21,6 +21,7 @@ _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray']
 AnyArrayIn = Sequence[_T] | Sequence['AnyArray']
+JsonFrozen = Union[Mapping[str, "JsonFrozen"], Sequence["JsonFrozen"], str, int, float, bool, None]
 
 def __convert_output(t, v):
     S = pydantic.create_model(
@@ -304,7 +305,7 @@ async def ids(
     return (__convert_output(Union[int, None], i) for i in r)
 
 async def jsonb_id(
-    db_sesh: AsyncSession, j: Union[pydantic.JsonValue, None]
+    db_sesh: AsyncSession, j: Union[JsonFrozen, None]
 ) -> Union[pydantic.JsonValue, None]:
     
     r = (await db_sesh.execute(

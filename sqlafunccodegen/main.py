@@ -101,10 +101,14 @@ pg_catalog_types = {
     "bool": TypeStrings(python_type="bool", sqla_type="sqlalchemy.Boolean"),
     "void": TypeStrings(python_type="None"),
     "json": TypeStrings(
-        python_type="pydantic.JsonValue", sqla_type="postgresql.JSON"
+        python_type="pydantic.JsonValue",
+        sqla_type="postgresql.JSON",
+        python_type_in="JsonFrozen",
     ),
     "jsonb": TypeStrings(
-        python_type="pydantic.JsonValue", sqla_type="postgresql.JSONB"
+        python_type="pydantic.JsonValue",
+        sqla_type="postgresql.JSONB",
+        python_type_in="JsonFrozen",
     ),
     "anyarray": TypeStrings(
         python_type="AnyArray[_T]",
@@ -193,7 +197,7 @@ from ipaddress import (
     IPv4Interface, IPv6Interface,
     IPv4Network, IPv6Network,
 )
-from typing import Annotated, Any, Iterable, Sequence, TypeVar, Union
+from typing import Annotated, Any, Iterable, Mapping, Sequence, TypeVar, Union
 from typing_extensions import TypeAliasType
 from uuid import UUID
 
@@ -208,6 +212,7 @@ _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray']
 AnyArrayIn = Sequence[_T] | Sequence['AnyArray']
+JsonFrozen = Union[Mapping[str, "JsonFrozen"], Sequence["JsonFrozen"], str, int, float, bool, None]
 
 def __convert_output(t, v):
     S = pydantic.create_model(
