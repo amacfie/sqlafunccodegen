@@ -522,7 +522,7 @@ class PythonGenerator:
             params_list.append(s)
         out_params = ", ".join(params_list)
 
-        if mode == "python":
+        if mode == Mode.python:
             out_args_list = []
             for arg_type, arg_name in zip(arg_types, procedure["argNames"]):
                 v = f"__convert_input({arg_name})"
@@ -535,12 +535,12 @@ class PythonGenerator:
                     f"sqlalchemy.literal({v}, type_={sqla_type})"
                 )
             out_args = ", ".join(out_args_list)
-        elif mode == "asyncpg_only":
+        elif mode == Mode.asyncpg_only:
             out_args = ", ".join(
                 f"__convert_input({arg_name})"
                 for arg_name in procedure["argNames"]
             )
-        elif mode == "func":
+        elif mode == Mode.func:
             out_args = ", ".join(procedure["argNames"])
 
         if procedure["description"] is None:

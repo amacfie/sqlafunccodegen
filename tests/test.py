@@ -6,7 +6,7 @@ import asyncpg
 from sqlalchemy import NullPool, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from . import out_python, out_func, out_asyncpg_only
+from . import out_asyncpg_only, out_func, out_python
 
 
 engine = create_async_engine(
@@ -194,12 +194,9 @@ class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
         async with get_db_sesh() as db_sesh:
             result = (
                 await db_sesh.execute(
-                    select(
-                        out_func.complex_id(literal({"r": 1.0, "i": 2.0}))
-                    )
+                    select(out_func.complex_id(literal({"r": 1.0, "i": 2.0})))
                 )
             ).scalar_one_or_none()
         assert result is not None
         self.assertEqual(result["r"], 1.0)
         self.assertEqual(result["i"], 2.0)
-
