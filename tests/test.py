@@ -148,13 +148,6 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
             result = await out_python.c2vector_id(db_sesh, c2v)
         self.assertEqual(result, c2v)
 
-    @unittest.skip("See https://github.com/amacfie/sqlafunccodegen/issues/10")
-    async def test_anyenum_f(self):
-        e = out_python.Enum__mood.happy
-        async with get_db_sesh() as db_sesh:
-            result = await out_python.anyenum_f(db_sesh, e, [e])
-        self.assertEqual(result, e)
-
     async def test_all_leagues(self):
         async with get_db_sesh() as db_sesh:
             result = await out_python.all_leagues(db_sesh)
