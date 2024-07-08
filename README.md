@@ -1,7 +1,7 @@
 # sqlafunccodegen
 
 Generate type-annotated Python functions that wrap PostgreSQL functions, using
-SQLAlchemy.
+asyncpg and, optionally, SQLAlchemy.
 Like [sqlacodegen](https://github.com/agronholm/sqlacodegen)
 but for functions instead of tables.
 
@@ -14,13 +14,13 @@ sqlafunccodegen --help
 ```
 
 Capabilities:
-* "sqlalchemy" mode: functions directly wrap `sqlalchemy.func.<function_name>`
+* "func" mode: functions directly wrap `sqlalchemy.func.<function_name>`
   * no types, just parameter names
-* "python" mode: functions execute a `sqlalchemy.select`
+* "python" and "asyncpg_only" modes: functions execute a select statement and
+  return results
   * many basic types
   * enums
   * arrays
-  * some pseudotypes such as `anyarray`
   * Pydantic models for user-defined composite types
   * set-returning functions return iterables
   * constraints in domains are not checked but the underlying type is used
@@ -28,65 +28,21 @@ Capabilities:
     correspondence isn't perfect. some types aren't recognized and the generic
     form in which sqlafunccodegen attempts to send them to the database may not
     work.
-* both modes:
-  * uses asyncpg
+* all modes:
   * comments as docstrings
   * functions with overloads not supported
+  * polymorphic pseudo-types not supported
   * `IN`, `INOUT`, and `VARIADIC` params not supported
   * default values are not available
 
 Generated code dependencies:
 * asyncpg
 * Pydantic 2
-* SQLAlchemy 2
+* SQLAlchemy 2 (except for "asyncpg_only" mode)
 
-## Example
+Examples
+* input: [`tests/schema.ddl`](tests/schema.ddl)
+* "python" mode output: [`tests/out_python.py`](tests/out_python.py)
+* "func" mode output: [`tests/out_func.py`](tests/out_func.py)
+* "asyncpg_only" mode output: [`tests/out_asyncpg_only.py`](tests/out_asyncpg_only.py)
 
-```sql
-create table league (
-    id serial primary key,
-    description text
-);
-
-create function count_leagues_by_description(_description text) returns integer
-as $$
-    select count(*) from league where description = _description;
-$$ language sql;
-
-comment on function count_leagues_by_description is
-    'Count leagues with a given description';
-```
-
-"python" mode:
-
-```python
-...
-
-async def count_leagues_by_description(
-    db_sesh: AsyncSession, _description: Union[str, None]
-) -> Union[int, None]:
-    "Count leagues with a given description"
-    return (
-        await db_sesh.execute(
-            sqlalchemy.select(
-                getattr(sqlalchemy.func, "count_leagues_by_description")(
-                    sqlalchemy.bindparam(
-                        key=None, value=_description, type_=sqlalchemy.Text
-                    )
-                )
-            )
-        )
-    ).scalar_one_or_none()
-
-
-```
-
-"sqlalchemy" mode:
-
-```python
-...
-
-def count_leagues_by_description(_description: Any) -> Any:
-    "Count leagues with a given description"
-    return getattr(sqlalchemy.func, "count_leagues_by_description")(_description)
-```

@@ -163,3 +163,4 @@ cython_debug/
 
 js_modules/
 tests/*.bak
+tmp.py

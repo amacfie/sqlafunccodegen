@@ -15,8 +15,6 @@ import pydantic
 import sqlalchemy
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
-
-
 _T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray']

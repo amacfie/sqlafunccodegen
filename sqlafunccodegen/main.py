@@ -45,7 +45,8 @@ async def get_graphile_data(engine: AsyncEngine, schema: str) -> Sequence[dict]:
 
 class Mode(str, Enum):
     python = "python"
-    sqlalchemy = "sqlalchemy"
+    func = "func"
+    asyncpg_only = "asyncpg_only"
 
 
 def main(
@@ -59,9 +60,13 @@ def main(
         typer.Option(
             help=(
                 "'python' mode generates functions that take and return Python"
-                " values, while 'sqlalchemy' mode generates functions that act"
+                " values, while 'func' mode generates functions that act"
                 " as sqlalchemy.func functions and can be used within a"
-                " SQLAlchemy SQL expression."
+                " SQLAlchemy SQL expression. 'asyncpg_only' mode is similar to"
+                " 'python' except it uses asyncpg connections and doesn't"
+                " require SQLAlchemy. For 'asyncpg_only' mode, we assume that"
+                " JSON/JSONB types are encoded as Python JSON types as in"
+                " https://magicstack.github.io/asyncpg/current/usage.html#example-automatic-json-conversion"
             )
         ),
     ] = Mode.python,
@@ -101,6 +106,10 @@ pg_catalog_types = {
     "uuid": TypeStrings(python_type="UUID", sqla_type="sqlalchemy.UUID"),
     "bool": TypeStrings(python_type="bool", sqla_type="sqlalchemy.Boolean"),
     "void": TypeStrings(python_type="None"),
+    # we assume json types correspond to python json types. sqlalchemy does this
+    # "SQLAlchemy sets default type decoder for json and jsonb types using the
+    # python builtin json.loads function", asyncpg by itself requires a custom
+    # encoder https://magicstack.github.io/asyncpg/current/usage.html#example-automatic-json-conversion
     "json": TypeStrings(
         python_type="pydantic.JsonValue",
         sqla_type="postgresql.JSON",
@@ -190,7 +199,7 @@ pg_catalog_types = {
     "money": TypeStrings(python_type="str", sqla_type="postgresql.MONEY"),
 }
 
-FRONTMATTER = """import datetime
+IMPORTS = """import datetime
 from decimal import Decimal
 from enum import Enum
 from ipaddress import (
@@ -204,12 +213,14 @@ from uuid import UUID
 
 import asyncpg
 import pydantic
-import sqlalchemy
+"""
+
+SQLALCHEMY_IMPORTS = """import sqlalchemy
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
+"""
 
-
-_T = TypeVar('_T')
+DEFINITIONS = """_T = TypeVar('_T')
 _E = TypeVar('_E', bound=Enum)
 AnyArray = list[_T] | list['AnyArray']
 AnyArrayIn = Sequence[_T] | Sequence['AnyArray']
@@ -393,8 +404,12 @@ class PythonGenerator:
 
         out_models = "\n\n".join(sorted(self.generate_models()))
 
-        ret = FRONTMATTER
-        if mode == Mode.python:
+        ret = IMPORTS
+        if mode != Mode.asyncpg_only:
+            ret += SQLALCHEMY_IMPORTS
+        ret += DEFINITIONS
+
+        if mode == Mode.python or mode == Mode.asyncpg_only:
             ret += "\n".join(sorted(self.out_recursive_type_defs)) + "\n\n"
             ret += "\n".join(sorted(self.out_enums)) + "\n\n"
             ret += out_models
@@ -498,7 +513,7 @@ class PythonGenerator:
         params_list = []
         for arg_type, arg_name in zip(arg_types, procedure["argNames"]):
             s = f"{arg_name}: "
-            if mode == "python":
+            if mode == "python" or mode == "asyncpg_only":
                 s += self.graphile_type_to_python(
                     arg_type["id"], anyenum=anyenum, in_=True
                 )
@@ -520,15 +535,13 @@ class PythonGenerator:
                     f"sqlalchemy.literal({v}, type_={sqla_type})"
                 )
             out_args = ", ".join(out_args_list)
-        else:
-            out_args = ", ".join(arg_name for arg_name in procedure["argNames"])
-
-        if procedure["returnsSet"]:
-            # each row has only one column, which may be a composite type
-            out_method = "scalars"
-        else:
-            # we use _or_none just in case
-            out_method = "scalar_one_or_none"
+        elif mode == "asyncpg_only":
+            out_args = ", ".join(
+                f"__convert_input({arg_name})"
+                for arg_name in procedure["argNames"]
+            )
+        elif mode == "func":
+            out_args = ", ".join(procedure["argNames"])
 
         if procedure["description"] is None:
             out_docstring = ""
@@ -536,6 +549,13 @@ class PythonGenerator:
             out_docstring = repr(procedure["description"])
 
         if mode == "python":
+            if procedure["returnsSet"]:
+                # each row has only one column, which may be a composite type
+                out_method = "scalars"
+            else:
+                # we use _or_none just in case
+                out_method = "scalar_one_or_none"
+
             return f"""async def {procedure['name']}(
     db_sesh: AsyncSession, {out_params}
 ) -> {out_return_type}:
@@ -546,7 +566,25 @@ class PythonGenerator:
         )
     )).{out_method}()
     {out_python_return_stmt}"""
-        else:
+        elif mode == "asyncpg_only":
+            # for some reason, using asyncpg like this doesn't require any
+            # casting. e.g. a function that takes a json param can be passed
+            # a python string and it'll work as it should
+            dollar_args = ", ".join(
+                f"${i+1}" for i in range(len(procedure["argNames"]))
+            )
+            func_expr = f"{procedure['name']}({dollar_args})"
+            seq = f"'select {func_expr}', {out_args}"
+            if procedure["returnsSet"]:
+                ret_expr = f"[__convert_output({scalar_return_type}, r[0]) for r in await conn.fetch({seq})]"
+            else:
+                ret_expr = f"__convert_output({scalar_return_type}, await conn.fetchval({seq}))"
+            return f"""async def {procedure['name']}(
+    conn: asyncpg.Connection, {out_params}
+) -> {out_return_type}:
+    {out_docstring}
+    return {ret_expr}"""
+        elif mode == "func":
             return f"""def {procedure['name']}(
     {out_params}
 ) -> Any:

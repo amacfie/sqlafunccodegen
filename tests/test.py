@@ -1,3 +1,4 @@
+import json
 import unittest
 from contextlib import asynccontextmanager
 
@@ -5,7 +6,7 @@ import asyncpg
 from sqlalchemy import NullPool, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from . import out_python, out_sqlalchemy
+from . import out_python, out_func, out_asyncpg_only
 
 
 engine = create_async_engine(
@@ -22,6 +23,55 @@ async def get_db_sesh():
         session.begin(),
     ):
         yield session
+
+
+@asynccontextmanager
+async def get_asyncpg_conn():
+    conn = await asyncpg.connect(
+        "postgresql://postgres:postgres@localhost:5432/postgres"
+    )
+    await conn.set_type_codec(
+        "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
+    )
+    await conn.set_type_codec(
+        "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
+    )
+    yield conn
+    await conn.close()
+
+
+class TestAsyncpgOnly(unittest.IsolatedAsyncioTestCase):
+    async def test_complex_id(self):
+        v = out_asyncpg_only.Model__complex(r=1.0, i=2.0)
+        async with get_asyncpg_conn() as conn:
+            result = await out_asyncpg_only.complex_id(conn, v)
+        assert result is not None
+        self.assertEqual(result.r, 1.0)
+        self.assertEqual(result.i, 2.0)
+
+    async def test_jsonb_id(self):
+        s = "test"
+        async with get_asyncpg_conn() as conn:
+            result = await out_asyncpg_only.jsonb_id(conn, s)
+        self.assertEqual(result, s)
+
+    async def test_set_of_complex_arrays(self):
+        async with get_asyncpg_conn() as conn:
+            result = await out_asyncpg_only.set_of_complex_arrays(conn)
+
+        self.assertEqual(
+            result,
+            [
+                [
+                    out_asyncpg_only.Model__complex(r=1, i=2),
+                    out_asyncpg_only.Model__complex(r=3, i=4),
+                ],
+                [
+                    out_asyncpg_only.Model__complex(r=5, i=6),
+                    out_asyncpg_only.Model__complex(r=7, i=8),
+                ],
+            ],
+        )
 
 
 class TestPython(unittest.IsolatedAsyncioTestCase):
@@ -145,10 +195,11 @@ class TestSQLAlchemy(unittest.IsolatedAsyncioTestCase):
             result = (
                 await db_sesh.execute(
                     select(
-                        out_sqlalchemy.complex_id(literal({"r": 1.0, "i": 2.0}))
+                        out_func.complex_id(literal({"r": 1.0, "i": 2.0}))
                     )
                 )
             ).scalar_one_or_none()
         assert result is not None
         self.assertEqual(result["r"], 1.0)
         self.assertEqual(result["i"], 2.0)
+
