@@ -42,12 +42,6 @@ def all_leagues(
     
     return getattr(sqlalchemy.func, 'all_leagues')()
 
-def anyenum_f(
-    a: Any, b: Any
-) -> Any:
-    
-    return getattr(sqlalchemy.func, 'anyenum_f')(a, b)
-
 def array_id(
     arr: Any
 ) -> Any:
@@ -95,18 +89,6 @@ def count_leagues_by_nullable(
 ) -> Any:
     'Count leagues by nullable'
     return getattr(sqlalchemy.func, 'count_leagues_by_nullable')(_nullable)
-
-def do_anyrange(
-    r: Any
-) -> Any:
-    
-    return getattr(sqlalchemy.func, 'do_anyrange')(r)
-
-def first_any(
-    a: Any, b: Any
-) -> Any:
-    
-    return getattr(sqlalchemy.func, 'first_any')(a, b)
 
 def get_mood(
     _mood: Any

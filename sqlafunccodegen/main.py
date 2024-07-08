@@ -486,6 +486,26 @@ class PythonGenerator:
             for arg_id in procedure["argTypeIds"]
         ]
 
+        polymorphic = bool(
+            ({at["name"] for at in arg_types} | {return_type["name"]})
+            & {
+                "any",
+                "anyelement",
+                "anyarray",
+                "anynonarray",
+                "anyenum",
+                "anyrange",
+                "anymultirange",
+                "anycompatible",
+                "anycompatiblearray",
+                "anycompatiblenonarray",
+                "anycompatiblerange",
+                "anycompatiblemultirange",
+            }
+        )
+        if polymorphic:
+            return None
+
         anyenum = "anyenum" in (
             {at["name"] for at in arg_types} | {return_type["name"]}
         )

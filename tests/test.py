@@ -89,13 +89,6 @@ class TestPython(unittest.IsolatedAsyncioTestCase):
             result = await out_python.array_id(db_sesh, v)
         self.assertEqual(result, v)
 
-    async def test_first_any(self):
-        a = 0
-        b = [1, 2, 3]
-        async with get_db_sesh() as db_sesh:
-            result = await out_python.first_any(db_sesh, a, b)
-        self.assertEqual(result, a)
-
     async def test_circle_id(self):
         c = asyncpg.Circle(center=asyncpg.Point(1, 2), radius=3)
         async with get_db_sesh() as db_sesh:

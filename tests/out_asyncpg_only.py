@@ -118,12 +118,6 @@ async def all_leagues(
     
     return [__convert_output(Model__league | None, r[0]) for r in await conn.fetch('select all_leagues()', )]
 
-async def anyenum_f(
-    conn: asyncpg.Connection, a: Union[_E, None], b: Union[AnyArrayIn[_E], None]
-) -> Union[_E, None]:
-    
-    return __convert_output(Union[_E, None], await conn.fetchval('select anyenum_f($1, $2)', __convert_input(a), __convert_input(b)))
-
 async def array_id(
     conn: asyncpg.Connection, arr: ArrayIn__int4
 ) -> Array__int4:
@@ -171,18 +165,6 @@ async def count_leagues_by_nullable(
 ) -> Union[int, None]:
     'Count leagues by nullable'
     return __convert_output(Union[int, None], await conn.fetchval('select count_leagues_by_nullable($1)', __convert_input(_nullable)))
-
-async def do_anyrange(
-    conn: asyncpg.Connection, r: Any
-) -> Union[None, None]:
-    
-    return __convert_output(Union[None, None], await conn.fetchval('select do_anyrange($1)', __convert_input(r)))
-
-async def first_any(
-    conn: asyncpg.Connection, a: Union[_T, None], b: Union[AnyArrayIn[_T], None]
-) -> Union[_T, None]:
-    
-    return __convert_output(Union[_T, None], await conn.fetchval('select first_any($1, $2)', __convert_input(a), __convert_input(b)))
 
 async def get_mood(
     conn: asyncpg.Connection, _mood: Enum__mood | None

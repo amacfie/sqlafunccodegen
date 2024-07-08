@@ -126,17 +126,6 @@ async def all_leagues(
     )).scalars()
     return (__convert_output(Model__league | None, i) for i in r)
 
-async def anyenum_f(
-    db_sesh: AsyncSession, a: Union[_E, None], b: Union[AnyArrayIn[_E], None]
-) -> Union[_E, None]:
-    
-    r = (await db_sesh.execute(
-        sqlalchemy.select(
-            getattr(sqlalchemy.func, 'anyenum_f')(sqlalchemy.literal(__convert_input(a), type_=None), sqlalchemy.literal(__convert_input(b), type_=None))
-        )
-    )).scalar_one_or_none()
-    return __convert_output(Union[_E, None], r)
-
 async def array_id(
     db_sesh: AsyncSession, arr: ArrayIn__int4
 ) -> Array__int4:
@@ -224,28 +213,6 @@ async def count_leagues_by_nullable(
         )
     )).scalar_one_or_none()
     return __convert_output(Union[int, None], r)
-
-async def do_anyrange(
-    db_sesh: AsyncSession, r: Any
-) -> Union[None, None]:
-    
-    r = (await db_sesh.execute(
-        sqlalchemy.select(
-            getattr(sqlalchemy.func, 'do_anyrange')(sqlalchemy.literal(__convert_input(r), type_=None))
-        )
-    )).scalar_one_or_none()
-    return __convert_output(Union[None, None], r)
-
-async def first_any(
-    db_sesh: AsyncSession, a: Union[_T, None], b: Union[AnyArrayIn[_T], None]
-) -> Union[_T, None]:
-    
-    r = (await db_sesh.execute(
-        sqlalchemy.select(
-            getattr(sqlalchemy.func, 'first_any')(sqlalchemy.literal(__convert_input(a), type_=None), sqlalchemy.literal(__convert_input(b), type_=None))
-        )
-    )).scalar_one_or_none()
-    return __convert_output(Union[_T, None], r)
 
 async def get_mood(
     db_sesh: AsyncSession, _mood: Enum__mood | None
