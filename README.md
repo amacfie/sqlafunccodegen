@@ -73,7 +73,7 @@ sql:
         package: "foo"
         emit_async_querier: true
 ```
-You can use `sqlc` to call Postgres functions by writing queries like `select * from f()`. As of As of v1.26.0,
+You can use `sqlc` to call Postgres functions by writing queries like `select * from f()`. As of v1.26.0,
 sqlc lacks some type features that sqlafunccodegen has such as JSON types, composite-type table columns, and
 using immutable types for inputs. sqlc
 uses dataclasses instead of Pydantic models.
